@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+ // Merge these match blocks inside the existing
+// service cloud.firestore { match /databases/{database}/documents { ... } }
+// Do not replace existing rules for forum_posts or pubmed_appraisals.
+match /network_profiles/{uid} {
+  function signedIn() { return request.auth != null; }
+  function owner() { return signedIn() && request.auth.uid == uid; }
+  function validProfile() {
+    let p = request.resource.data;
+    return p.keys().hasOnly(['uid','name','nameSearch','role','specialty','institution','city','bio','orcid','lattes','articles','theme'])
+      && p.keys().hasAll(['uid','name','nameSearch','role','specialty','institution','city','bio','orcid','lattes','articles','theme'])
+      && p.uid == uid && p.name is string && p.name.size() > 0 && p.name.size() <= 80
+      && p.nameSearch is string && p.nameSearch.size() <= 80
+      && p.role is string && p.role.size() <= 80
+      && p.specialty is string && p.specialty.size() <= 80
+      && p.institution is string && p.institution.size() <= 160
+      && p.city is string && p.city.size() <= 100
+      && p.bio is string && p.bio.size() <= 600
+      && p.orcid is string && p.orcid.size() <= 19
+      && p.lattes is string && p.lattes.size() <= 16
+      && p.articles is list && p.articles.size() <= 100
+      && p.theme in ['ocean','violet','emerald'];
+  }
+  allow get: if signedIn();
+  allow list: if signedIn() && request.query.limit != null && request.query.limit <= 20;
+  allow create, update: if owner() && validProfile();
+  allow delete: if owner();
+}
+match /network_connections/{pairId} {
+  function signedIn() { return request.auth != null; }
+  function participant() { return signedIn() && request.auth.uid in resource.data.members; }
+  allow get: if signedIn() && (resource == null || request.auth.uid in resource.data.members);
+  allow list: if participant();
+  allow create: if signedIn()
+    && request.resource.data.keys().hasOnly(['members','sender','recipient','status'])
+    && request.resource.data.keys().hasAll(['members','sender','recipient','status'])
+    && request.resource.data.sender == request.auth.uid
+    && request.resource.data.recipient is string
+    && request.resource.data.recipient != request.auth.uid
+    && request.resource.data.members is list && request.resource.data.members.size() == 2
+    && request.resource.data.members[0] is string && request.resource.data.members[1] is string
+    && request.resource.data.members[0] < request.resource.data.members[1]
+    && request.resource.data.sender in request.resource.data.members
+    && request.resource.data.recipient in request.resource.data.members
+    && pairId == request.resource.data.members[0] + '~' + request.resource.data.members[1]
+    && request.resource.data.status == 'pending'
+    && exists(/databases/$(database)/documents/network_profiles/$(request.resource.data.recipient));
+  allow update: if participant()
+    && resource.data.recipient == request.auth.uid && resource.data.status == 'pending'
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+    && request.resource.data.status == 'accepted';
+  allow delete: if participant();
+}
+
+}
+}

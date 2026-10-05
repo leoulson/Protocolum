@@ -45,3 +45,12 @@ O conteúdo é educacional. Consulte as fontes completas e os protocolos locais.
 ## Direitos
 
 Direitos reservados a Leonardo Spolon Ulson. Nenhuma licença de redistribuição foi concedida neste repositório.
+## Rede acadêmica — ativação
+
+A rede utiliza Firebase Authentication (Google), network_profiles e network_connections no Firestore.
+
+O Firestore padrão do projeto está ativo em São Paulo (southamerica-east1). As regras completas estão em firestore.rules e são referenciadas por firebase.json. Para atualizar as regras: firebase deploy --only firestore:rules. O arquivo network-rules.fragment.txt é apenas uma referência dos blocos da rede, não um arquivo completo para deploy.
+
+Perfis são publicados somente por ação explícita do titular. A busca retorna até 20 perfis pelo início do nome. Pedidos usam um documento por par de usuários; apenas o destinatário pode aceitar. Participantes podem cancelar, recusar e desfazer a amizade. A retirada do perfil do buscador mantém as conexões.
+
+O perfil público é uma cópia da versão local: após editar, use Publicar / atualizar perfil. E-mail, contatos pessoais e credenciais não são enviados ao diretório.

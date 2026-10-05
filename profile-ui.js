@@ -1,3 +1,4 @@
+import { mountNetwork, stopNetwork } from './friends-network.js';
 import { normalizeAcademic, mountAcademic } from './profile-academic.js';
 const text = (pt, en) => document.documentElement.lang.startsWith('en') ? en : pt;
 const account = () => window.clinicalMindCurrentUser?.();
@@ -70,9 +71,11 @@ function enhanceProfile(target) {
   };
   const professional=section.querySelector('#professionalProfile');const editAbout=document.createElement('details');editAbout.className='academic-editor';editAbout.innerHTML='<summary>'+text('Editar apresentação','Edit introduction')+'</summary>';professional.before(editAbout);const nameForm=body.querySelector('#profileForm');if(nameForm){editAbout.append(nameForm);nameForm.addEventListener('submit',()=>queueMicrotask(()=>{const updated=account();section.querySelector('.profile-summary h3').textContent=updated?.name||user.name;section.querySelector('.profile-monogram').textContent=(updated?.name||user.name).slice(0,1).toUpperCase();}));}editAbout.append(professional);
   mountAcademic(section,user,()=>profile,(next,status)=>{if(!save(user,next,status))return false;profile=normalizeProfile(next);return true;});
+  mountNetwork(section,user,()=>profile);
   renderFriends();
 }
 export function renderProfilePage() {
+  stopNetwork();
   const host=document.getElementById('recommendations');
   if(!host || !account())return;
   document.getElementById('detailOverlay').style.display='none';

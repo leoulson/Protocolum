@@ -5,7 +5,11 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**",
-      "**/*debug*.log"
+      "**/*debug*.log",
+      "**/*.fragment.txt",
+      "README.md",
+      "firestore.rules",
+      "firestore-existing.rules"
     ],
     "rewrites": [
       {
@@ -13,5 +17,8 @@
         "destination": "/index.html"
       }
     ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
   }
 }

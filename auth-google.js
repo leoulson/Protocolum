@@ -96,6 +96,7 @@ async function initializeGoogleAuth() {
 
     onAuthStateChanged(auth, user => {
       const revision = ++identityRevision;
+      window.protocolumStopNetwork?.();
       stopForumSync?.();
       stopForumSync = undefined;
       if (!user) {
