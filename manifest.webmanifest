@@ -1,0 +1,19 @@
+{
+  "name": "Protocolum — Evidência Clínica",
+  "short_name": "Protocolum",
+  "description": "Biblioteca educacional de diretrizes, algoritmos e literatura médica.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07182f",
+  "theme_color": "#07182f",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

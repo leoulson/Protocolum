@@ -1,0 +1,71 @@
+/* Mobile first. All cards use the existing blue glass palette. */
+#app .sectionhead[hidden] { display:none!important; }
+#app .gcomp { display:flex;flex-direction:column;gap:18px;min-width:0;color:var(--lg-text,#edf7ff); }
+#app .gcomp * { box-sizing:border-box; }
+#app .gcomp-intro,#app .gcomp-controls,#app .gcomp-card,#app .gcomp-synthesis,#app .gcomp-empty,#app .gcomp-notes {
+  border:1px solid var(--lg-line,rgba(211,237,255,.32));border-radius:22px;
+  background:linear-gradient(135deg,rgba(105,167,215,.12),rgba(11,34,61,.85));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 12px 30px rgba(0,16,42,.2);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  padding:20px;min-width:0;
+}
+#app .gcomp-intro { background:linear-gradient(135deg,rgba(56,148,224,.3),rgba(11,34,61,.85)); }
+#app .gcomp-eyebrow { color:#a6e3ff;font-size:12px;letter-spacing:.07em; }
+#app .gcomp h1 { font-size:clamp(24px,4vw,36px);line-height:1.18;margin:10px 0 12px;color:#f3faff; }
+#app .gcomp h2 { font-size:22px;line-height:1.35;margin:0 0 8px;color:#f3faff; }
+#app .gcomp h3 { font-size:17px;line-height:1.5;margin:12px 0 8px;color:#f3faff; }
+#app .gcomp p { font-size:15px;line-height:1.65;margin:8px 0;color:#d4e8f7;overflow-wrap:anywhere; }
+#app .gcomp-controls { display:flex;flex-direction:column;gap:10px; }
+#app .gcomp-controls>label,#app .gcomp-notes>label { display:block;font-size:14px;font-weight:600;color:#eaf6ff; }
+#app .gcomp input[type=search],#app .gcomp select,#app .gcomp textarea {
+  width:100%;min-height:48px;font-size:16px;color:#f3faff;
+  background:rgba(7,27,49,.78);border:1px solid rgba(175,216,250,.4);border-radius:12px;padding:12px;
+}
+#app .gcomp input::placeholder,#app .gcomp textarea::placeholder { color:#acc9df;opacity:1; }
+#app .gcomp select option { color:#f3faff;background:#102e4b; }
+#app .gcomp fieldset { display:flex;flex-wrap:wrap;gap:10px;border:0;padding:8px 0 0;margin:4px 0 0;min-width:0; }
+#app .gcomp legend { font-size:14px;color:#c8e0f2;padding:0; }
+#app .gcomp fieldset[hidden] { display:none; }
+#app .gcomp-source-choice { display:flex;gap:10px;align-items:center;min-height:52px;padding:8px 14px;flex:1 1 160px;border:1px solid rgba(175,216,250,.35);border-radius:13px;background:rgba(61,116,159,.15);cursor:pointer; }
+#app .gcomp-source-choice input { width:22px;height:22px;flex:0 0 22px;accent-color:#66d5ff; }
+#app .gcomp-source-choice small { display:block;font-size:12px;color:#bdd8ec;margin-top:3px; }
+#app .gcomp-source-choice:has(input:checked) { border-color:#79ceff;background:rgba(52,145,207,.24); }
+#app .gcomp-result-heading { margin:4px 0 16px; }
+#app .gcomp-result-heading p { font-size:12px;color:#b9d5e9; }
+#app .gcomp-synthesis { border-left:3px solid #64d5cf; }
+#app .gcomp-synthesis h3:first-child { margin-top:0; }
+#app .gcomp-empty { border-left:3px solid #d5b775; }
+#app .gcomp-context { padding:8px 4px; }
+#app .gcomp-cards { display:flex;flex-direction:column;gap:16px;align-items:stretch;margin:16px 0; }
+#app .gcomp-card { display:flex;flex-direction:column;gap:8px; }
+#app .gcomp-card>header { display:flex;justify-content:space-between;gap:8px;align-items:center; }
+#app .gcomp-society { padding:8px 12px;border:1px solid rgba(173,224,255,.4);border-radius:12px;background:rgba(56,154,224,.23);font-size:13px;font-weight:700; }
+#app .gcomp-year { color:#c9deee;font-size:13px; }
+#app .gcomp-fields { display:flex;flex-direction:column;margin:8px 0; }
+#app .gcomp details { border-top:1px solid rgba(175,216,250,.22); }
+#app .gcomp summary { min-height:48px;cursor:pointer;padding:13px 0;font-size:14px;font-weight:600; }
+#app .gcomp details p { margin:0 0 14px; }
+#app .gcomp dl { margin:0 0 14px; }
+#app .gcomp dt { font-size:12px;color:#a9cee8;margin-top:10px; }
+#app .gcomp dd { margin:3px 0 0;color:#edf7ff;font-size:14px;line-height:1.6; }
+#app .gcomp-card footer { margin-top:auto;padding-top:14px;border-top:1px solid rgba(175,216,250,.22); }
+#app .gcomp-card footer p { font-size:12px;color:#bbd7eb; }
+#app .gcomp-card footer small { display:block;font-size:12px;line-height:1.5;color:#bbd7eb; }
+#app .gcomp-source-link { display:inline-flex;align-items:center;min-height:44px;color:#94e1ff;margin-top:6px;font-size:14px; }
+#app .gcomp-notes { display:flex;flex-direction:column;gap:10px; }
+#app .gcomp textarea { min-height:128px;resize:vertical;line-height:1.6; }
+#app .gcomp-notes small { color:#b5d1e5;font-size:12px; }
+#app .gcomp-actions { display:flex;gap:10px;flex-wrap:wrap;margin-top:16px; }
+#app .gcomp-actions button { flex:1 1 160px;min-height:48px;min-width:44px;padding:12px 16px;border:1px solid #80c5f3;border-radius:13px;background:rgba(35,113,169,.32);color:#edf7ff;font-size:14px;cursor:pointer; }
+#app .gcomp-actions button:hover { background:rgba(45,133,194,.5); }
+#app .gcomp-use-note { font-size:12px; }
+#app .gcomp-feedback { font-size:13px;color:#a4e3d7; }
+#app .gcomp :is(button,input,select,textarea,summary,a):focus-visible { outline:3px solid #8ddfff;outline-offset:3px; }
+@media (prefers-reduced-transparency:reduce) {
+  #app .gcomp-intro,#app .gcomp-controls,#app .gcomp-card,#app .gcomp-synthesis,#app .gcomp-empty,#app .gcomp-notes { background:#102e4b;backdrop-filter:none; }
+}
+@media (min-width:1024px) {
+  #app .gcomp-cards { flex-direction:row; }
+  #app .gcomp-card { flex:1 1 0; }
+  #app .gcomp-intro,#app .gcomp-controls,#app .gcomp-card,#app .gcomp-synthesis,#app .gcomp-empty,#app .gcomp-notes { padding:24px; }
+}
