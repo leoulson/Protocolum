@@ -1,0 +1,38 @@
+/* Mobile layout overrides. Desktop keeps its established layout. */
+@media(max-width:1023px){
+  html{scroll-padding-top:calc(116px + env(safe-area-inset-top));scroll-padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+  body{overflow-wrap:anywhere;-webkit-text-size-adjust:100%}
+  #app>.main{padding-inline:max(12px,env(safe-area-inset-left));padding-bottom:calc(100px + env(safe-area-inset-bottom));width:100%;box-sizing:border-box}
+  #app .top{position:relative;top:auto;margin:0 0 16px;padding:8px 0;background:transparent;border:0;box-shadow:none;backdrop-filter:none}
+  #app .main>*{min-width:0;max-width:100%;box-sizing:border-box}
+  #app .sectionhead{flex-direction:column;align-items:stretch}
+  #app .head-actions{gap:8px}#app .head-actions button{flex:1 1 140px;min-height:44px;white-space:normal}
+  #app .quick,#app .item,#app .hero,#app .metricbox,#app .grade{box-sizing:border-box;min-width:0}
+  #app .hero h2{font-size:clamp(18px,5vw,23px);line-height:1.4}
+  #app .hero p{font-size:14px;line-height:1.7}
+  #app .hero .btn{min-height:44px;margin-bottom:8px}
+  #app .app-bottom-nav{box-sizing:border-box;padding-left:max(4px,env(safe-area-inset-left));padding-right:max(4px,env(safe-area-inset-right))}
+  #app .app-bottom-nav button{min-width:44px;min-height:52px;padding:6px 2px;touch-action:manipulation}
+  #app .app-bottom-nav button small{font-size:11px;line-height:1.2}
+  .profile-page .profile-details{gap:18px}.profile-page .academic-cover{padding:20px 16px;min-height:150px;align-items:flex-start;gap:12px}
+  .profile-page .academic-cover>div{min-width:0}.profile-page .academic-cover h3{font-size:22px;line-height:1.3;overflow-wrap:anywhere}
+  .profile-page .academic-cover .profile-monogram{width:60px;height:60px;font-size:28px;border-radius:18px}
+  .profile-page .academic-cover:after{opacity:.45}
+  .profile-page .academic-stats>div{min-width:0;padding:12px 5px}.profile-page .academic-stats strong{font-size:23px}.profile-page .academic-stats span{font-size:11px;line-height:1.4}
+  .profile-page .academic-paper{padding:16px}.profile-page .academic-paper h4{font-size:17px}
+  .profile-page .academic-editor>summary{padding:15px 12px;line-height:1.5}.profile-page .academic-editor>form{padding:4px 12px 16px}
+  .profile-page .profile-fields,.profile-page .network-cards,.profile-page .profile-friend-list{flex-direction:column}
+  .profile-page input,.profile-page textarea,.profile-page select{min-width:0;max-width:100%;box-sizing:border-box;font-size:16px!important}
+  .profile-page .network-panel,.profile-page .profile-friends{padding:16px 12px;border-radius:18px}
+  .profile-page .network-panel h2{font-size:21px}.profile-page .network-panel h3{font-size:18px}
+  .profile-page .network-publish{display:flex;flex-direction:column;gap:8px}.profile-page .network-publish .btn{margin:0;width:100%}
+  .profile-page .network-cards article{padding:14px}.profile-page .profile-friend-actions{gap:8px}.profile-page .profile-friend-actions .btn{flex:1 1 110px;white-space:normal}
+  .profile-page form>.btn{width:100%;min-height:48px}.profile-page .network-public-view{padding:16px 12px}
+  .overlay{padding:8px!important;box-sizing:border-box}.overlay .modal{width:100%;max-width:100%;max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));box-sizing:border-box}
+  .reading-head{padding:20px 16px!important}.reading-scroll{padding:16px!important}.reader-tools{flex-wrap:wrap;gap:8px}.reader-tools input{flex:1 1 100%;width:100%;min-width:0}.reading-actions{flex-wrap:wrap}.reading-actions>*{flex:1 1 100%}
+  #app .pml-grid,#app .gcomp-cards{display:flex;flex-direction:column}.pml-panel,.pml-card,.gcomp-card,.hf-flow-card{min-width:0;box-sizing:border-box}
+  input,select,textarea{font-size:16px!important;scroll-margin-top:100px;scroll-margin-bottom:120px}
+  button,a.btn{touch-action:manipulation}textarea{line-height:1.6}
+  #app.keyboard-open>.app-bottom-nav,#app.keyboard-open .case-bottom-nav{visibility:hidden;pointer-events:none}
+}
+@media(max-width:359px){.profile-page .academic-cover{flex-direction:column}.profile-page .academic-stats{gap:4px}#app .app-bottom-nav button small{font-size:10px}}
