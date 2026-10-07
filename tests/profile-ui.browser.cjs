@@ -1,0 +1,28 @@
+const {chromium,expect}=require('@playwright/test');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+ let remote={name:'Cloud Name',bio:'Cloud biography',theme:'ocean',role:'',specialty:'',institution:'',city:'',orcid:'',lattes:'',friends:[],articles:[]};let fail=false;let writes=0;
+ async function device(){
+  const context=await browser.newContext({serviceWorkers:'block'});
+  await context.addInitScript(()=>{localStorage.setItem('clinicalmind.accounts.v1',JSON.stringify({'one@example.com':{name:'Google Name',email:'one@example.com',authProvider:'google',firebaseUid:'uid-one'}}));sessionStorage.setItem('clinicalmind.session.v1','one@example.com');});
+  await context.route('**/auth-google.js',route=>route.fulfill({contentType:'text/javascript',body:"export const db={};export const auth={currentUser:{uid:'uid-one'}};"}));
+  await context.route('https://**',route=>route.abort());
+  await context.route('**/friends-network.js',route=>route.fulfill({contentType:'text/javascript',body:'export function stopNetwork(){};export function mountNetwork(){};'}));
+  await context.route('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js',route=>route.fulfill({contentType:'text/javascript',body:`export const doc=(_,collection,uid)=>({collection,uid});export const getDocFromServer=async()=>({exists:()=>true,data:()=>(${JSON.stringify(remote)})});export async function setDoc(ref,data,options){await window.testCloudWrite(ref,data,options);};export const collection=()=>({});export const query=()=>({});export const where=()=>({});export const getDocs=async()=>({forEach(){}});export const addDoc=()=>{};export const onSnapshot=()=>()=>{};export const serverTimestamp=()=>0;`}));
+  const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.exposeFunction('testCloudWrite',async(ref,data,options)=>{await new Promise(r=>setTimeout(r,100));if(fail)throw Error('offline');assert.equal(ref.uid,'uid-one');assert.equal(ref.collection,'private_profiles');remote=options?.merge?{...remote,...data}:data;writes++;});
+  await page.goto('http://127.0.0.1:8080/');await page.evaluate(()=>window.clinicalMindGoogleSuccess({uid:'uid-one',email:'one@example.com',name:'Google Name'}));await page.locator('#sidebarToggle').click();await page.locator('#nav [data-section="Perfil"]').click();await expect(page.locator('#profileBio')).toHaveValue(remote.bio);await expect(page.locator('.profile-summary h3')).toHaveText(remote.name);return {context,page,errors};
+ }
+ const first=await device();let p=first.page;
+ await p.locator('.academic-editor').filter({has:p.locator('#professionalProfile')}).locator('summary').click();
+ await p.locator('#profileBio').fill('Edited biography');await p.locator('#professionalProfile button').click();await expect(p.locator('#professionalStatus')).toHaveText('Salvo na nuvem.');assert.equal(remote.bio,'Edited biography');
+ await p.locator('#profileName').fill('Edited Name');await p.locator('#profileForm button').click();await expect(p.locator('#profileStatus')).toHaveText('Salvo na nuvem.');assert.equal(remote.name,'Edited Name');
+ await p.locator('.academic-editor').filter({has:p.locator('#academicLinks')}).locator('summary').click();await p.locator('#academicTheme').selectOption('violet');await p.locator('#academicLinks button').click();await expect(p.locator('#academicLinkStatus')).toHaveText('Salvo na nuvem.');assert.equal(remote.theme,'violet');
+ await p.locator('.academic-editor').filter({has:p.locator('#academicArticleForm')}).locator('summary').click();await p.locator('#academicDOI').fill('10.1234/paper');await p.locator('#academicArticleTitle').fill('Test Article');await p.locator('#academicArticleForm button[type="submit"], #academicArticleForm button.btn.primary').click();await expect(p.locator('#academicArticleStatus')).toHaveText('Salvo na nuvem.');assert.equal(remote.articles.length,1);
+ await p.locator('[data-feature-doi]').click();await expect(p.locator('[data-feature-doi]')).toHaveAttribute('aria-pressed','true');assert.equal(remote.articles[0].featured,true);
+ await p.locator('#friendName').fill('Colleague');await p.locator('#friendEmail').fill('colleague@example.com');await p.locator('#friendSave').click();await expect(p.locator('#friendStatus')).toHaveText('Salvo na nuvem.');assert.equal(remote.friends.length,1);
+ fail=true;await p.locator('#profileBio').fill('Unsaved biography');await p.locator('#professionalProfile button').click();await expect(p.locator('#professionalStatus')).toContainText('Não foi possível salvar');assert.equal(remote.bio,'Edited biography');await expect(p.locator('#profileBio')).toHaveValue('Unsaved biography');fail=false;
+ const second=await device();await expect(second.page.locator('#profileBio')).toHaveValue('Edited biography');await expect(second.page.locator('.profile-summary h3')).toHaveText('Edited Name');await expect(second.page.locator('[data-feature-doi]')).toHaveAttribute('aria-pressed','true');assert.deepEqual(first.errors,[]);assert.deepEqual(second.errors,[]);
+ console.log('Browser passed: profile, name, academic links, articles, featured articles, contacts, failed-save feedback, restoration on a second device. Cloud adapter mocked;',writes,'writes.');await browser.close();
+})().catch(e=>{console.error(e);process.exit(1);});

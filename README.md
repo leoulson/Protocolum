@@ -38,7 +38,7 @@ Enviar alterações ao GitHub não publica automaticamente no Firebase.
 
 ## Dados e limites
 
-Perfis, lista pessoal de amigos e vitrine DOI ficam neste navegador, separados por conta. Links Lattes e ORCID são autodeclarados; não autenticam a titularidade. Metadados DOI são consultados na Crossref. Algumas funções utilizam Firestore e dependem das regras de acesso configuradas no projeto.
+Com login Google, o nome, perfil, contatos pessoais e vitrine DOI são salvos no documento privado `private_profiles/{uid}` do Firestore e carregados ao entrar em outro dispositivo. Contas locais continuam com armazenamento apenas no navegador. Na primeira sincronização, o perfil existente do navegador é migrado somente se não houver perfil na nuvem. Links Lattes e ORCID são autodeclarados; não autenticam a titularidade. Metadados DOI são consultados na Crossref. Algumas funções utilizam Firestore e dependem das regras de acesso configuradas no projeto.
 
 O conteúdo é educacional. Consulte as fontes completas e os protocolos locais.
 
@@ -51,6 +51,18 @@ A rede utiliza Firebase Authentication (Google), network_profiles e network_conn
 
 O Firestore padrão do projeto está ativo em São Paulo (southamerica-east1). As regras completas estão em firestore.rules e são referenciadas por firebase.json. Para atualizar as regras: firebase deploy --only firestore:rules. O arquivo network-rules.fragment.txt é apenas uma referência dos blocos da rede, não um arquivo completo para deploy.
 
+Para ativar o salvamento privado em nuvem, publique as regras atualizadas com `firebase deploy --only firestore:rules`. O aplicativo não confirma salvamento em nuvem sem resposta do Firestore; falhas de leitura impedem sobrescrever um perfil remoto com dados locais.
+
 Perfis são publicados somente por ação explícita do titular. A busca retorna até 20 perfis pelo início do nome. Pedidos usam um documento por par de usuários; apenas o destinatário pode aceitar. Participantes podem cancelar, recusar e desfazer a amizade. A retirada do perfil do buscador mantém as conexões.
 
 O perfil público é uma cópia da versão local: após editar, use Publicar / atualizar perfil. E-mail, contatos pessoais e credenciais não são enviados ao diretório.
+
+## Testes de perfil
+
+A sincronização privada é testada sem credenciais de produção:
+
+```sh
+node --experimental-vm-modules --test tests/profile-store.test.cjs
+```
+
+O teste de interface usa `@playwright/test`, Chromium em `/usr/bin/chromium` e o servidor local na porta 8080. Execute com o pacote disponível no ambiente Node (por exemplo, `NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/profile-ui.browser.cjs`). O adaptador do Firestore é simulado: o teste cobre edição, confirmação de gravação, falha de gravação e restauração em outro contexto de navegador, sem gravar dados reais. As regras de acesso devem ser validadas no emulador do Firestore antes de publicar.

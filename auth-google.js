@@ -1,3 +1,4 @@
+import { loadProfile, resetProfileSync } from './profile-store.js';
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
@@ -96,6 +97,7 @@ async function initializeGoogleAuth() {
 
     onAuthStateChanged(auth, user => {
       const revision = ++identityRevision;
+      resetProfileSync();
       window.protocolumStopNetwork?.();
       stopForumSync?.();
       stopForumSync = undefined;
@@ -111,6 +113,7 @@ async function initializeGoogleAuth() {
         photoURL: user.photoURL || ''
       };
       window.clinicalMindGoogleSuccess?.(window.clinicalMindUser);
+      loadProfile(window.clinicalMindCurrentUser()).catch(()=>console.warn('Protocolum: private profile could not be loaded from the cloud.'));
       // Existing optional cloud features cannot prevent authentication from succeeding.
       import('./cloud-sync.js').then(async module => {
         if (revision !== identityRevision || auth.currentUser?.uid !== user.uid) return;

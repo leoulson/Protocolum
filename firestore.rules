@@ -4,6 +4,29 @@ service cloud.firestore {
  // Merge these match blocks inside the existing
 // service cloud.firestore { match /databases/{database}/documents { ... } }
 // Do not replace existing rules for forum_posts or pubmed_appraisals.
+// Private cloud profile: only its authenticated owner can read or write it.
+match /private_profiles/{uid} {
+  function owner() { return request.auth != null && request.auth.uid == uid; }
+  function validPrivateProfile() {
+    let p = request.resource.data;
+    return p.keys().hasOnly(['name','role','specialty','institution','city','bio','orcid','lattes','articles','theme','friends'])
+      && p.keys().hasAll(['name','role','specialty','institution','city','bio','orcid','lattes','articles','theme','friends'])
+      && p.name is string && p.name.size() > 0 && p.name.size() <= 80
+      && p.role is string && p.role.size() <= 80
+      && p.specialty is string && p.specialty.size() <= 80
+      && p.institution is string && p.institution.size() <= 160
+      && p.city is string && p.city.size() <= 100
+      && p.bio is string && p.bio.size() <= 600
+      && p.orcid is string && p.orcid.size() <= 19
+      && p.lattes is string && p.lattes.size() <= 16
+      && p.articles is list && p.articles.size() <= 100
+      && p.friends is list && p.friends.size() <= 100
+      && p.theme in ['ocean','violet','emerald'];
+  }
+  allow get, delete: if owner();
+  allow create, update: if owner() && validPrivateProfile();
+  allow list: if false;
+}
 match /network_profiles/{uid} {
   function signedIn() { return request.auth != null; }
   function owner() { return signedIn() && request.auth.uid == uid; }
