@@ -1,9 +1,51 @@
 rules_version = '2';
 service cloud.firestore {
  match /databases/{database}/documents {
- // Merge these match blocks inside the existing
-// service cloud.firestore { match /databases/{database}/documents { ... } }
-// Do not replace existing rules for forum_posts or pubmed_appraisals.
+// Shared community: authenticated readers, posts and replies attributed to their author.
+match /forum_posts/{postId} {
+  function signedIn() { return request.auth != null; }
+  function validPost() {
+    let p = request.resource.data;
+    return p.userId == request.auth.uid && p.author is string && p.author.size() > 0 && p.author.size() <= 80
+      && p.timestamp == request.time
+      && ((p.kind == 'case'
+        && p.keys().hasOnly(['userId','author','kind','timestamp','assessment','plan','reference'])
+        && p.assessment is string && p.assessment.size() >= 10 && p.assessment.size() <= 2400
+        && p.plan is string && p.plan.size() >= 10 && p.plan.size() <= 2400
+        && p.reference is string && p.reference.size() >= 3 && p.reference.size() <= 240)
+      || (p.kind == 'general'
+        && p.keys().hasOnly(['userId','author','kind','timestamp','title','body','topic'])
+        && p.title is string && p.title.size() > 0 && p.title.size() <= 90
+        && p.body is string && p.body.size() > 0 && p.body.size() <= 1200
+        && p.topic is string && p.topic.size() > 0 && p.topic.size() <= 80));
+  }
+  allow get: if signedIn();
+  allow list: if signedIn() && request.query.limit != null && request.query.limit <= 50;
+  allow create: if signedIn() && validPost();
+  allow update: if false;
+  allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+  match /replies/{replyId} {
+    allow read: if signedIn();
+    allow create: if signedIn()
+      && exists(/databases/$(database)/documents/forum_posts/$(postId))
+      && request.resource.data.keys().hasOnly(['userId','author','body','createdAt'])
+      && request.resource.data.userId == request.auth.uid
+      && request.resource.data.author is string && request.resource.data.author.size() > 0 && request.resource.data.author.size() <= 80
+      && request.resource.data.body is string && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 500
+      && request.resource.data.createdAt == request.time;
+    allow update: if false;
+    allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+  }
+  match /votes/{uid} {
+    allow read: if signedIn();
+    allow create, update: if signedIn() && request.auth.uid == uid
+      && exists(/databases/$(database)/documents/forum_posts/$(postId))
+      && request.resource.data.keys().hasOnly(['supported','citation','like'])
+      && request.resource.data.keys().hasAll(['supported','citation','like'])
+      && request.resource.data.supported is bool && request.resource.data.citation is bool && request.resource.data.like is bool;
+    allow delete: if signedIn() && request.auth.uid == uid;
+  }
+}
 // Study data is private to the authenticated account, including each note.
 match /private_study/{uid} {
   function owner() { return request.auth != null && request.auth.uid == uid; }

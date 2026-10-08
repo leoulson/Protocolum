@@ -1,3 +1,4 @@
+import { startCommunity, stopCommunity } from './community-cloud.js';
 import { loadFavorites, migrateLegacyNotes, resetStudySync } from './study-sync.js';
 import { loadProfile, resetProfileSync } from './profile-store.js';
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
@@ -31,7 +32,6 @@ const reportError = error => {
 };
 let ready = false;
 let busy = false;
-let stopForumSync;
 let identityRevision = 0;
 export let db = null;
 export let auth = null;
@@ -101,8 +101,7 @@ async function initializeGoogleAuth() {
       resetProfileSync();
       resetStudySync();
       window.protocolumStopNetwork?.();
-      stopForumSync?.();
-      stopForumSync = undefined;
+      stopCommunity();
       if (!user) {
         window.clinicalMindUser = null;
         window.clinicalMindGoogleSignOutSuccess?.();
@@ -120,14 +119,12 @@ async function initializeGoogleAuth() {
         if (revision === identityRevision) window.clinicalMindRefreshFavorites?.();
       }).catch(()=>console.warn('Protocolum: favorites could not be loaded from the cloud.'));
       migrateLegacyNotes(window.clinicalMindCurrentUser()).catch(()=>console.warn('Protocolum: existing notes could not be migrated to the cloud.'));
+      startCommunity(window.clinicalMindCurrentUser());
       // Existing optional cloud features cannot prevent authentication from succeeding.
       import('./cloud-sync.js').then(async module => {
         if (revision !== identityRevision || auth.currentUser?.uid !== user.uid) return;
         await module.syncPubMedAppraisals(user.uid);
         if (revision !== identityRevision || auth.currentUser?.uid !== user.uid) return;
-        const unsubscribe = await module.syncForumPosts();
-        if (revision === identityRevision) stopForumSync = unsubscribe;
-        else unsubscribe?.();
       }).catch(() => console.warn('Protocolum: optional cloud synchronization is unavailable.'));
     }, reportError);
     ready = true;

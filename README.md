@@ -80,3 +80,26 @@ node --experimental-vm-modules --test tests/profile-store.test.cjs tests/study-s
 ```
 
 O teste de interface de estudo usa o mesmo servidor e as dependências do teste de perfil: `NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/study-ui.browser.cjs`. O Firestore é simulado e nenhum dado de produção é alterado.
+
+## Comunidade compartilhada
+
+A sessão clínica e o mural geral usam o mesmo feed do Firestore. Posts ficam em `forum_posts/{id}`; respostas e votos ficam nas subcoleções `replies` e `votes`. Leitura e participação exigem login Google. Publicações e respostas incluem o nome de exibição e o UID do autor, sem enviar seu e-mail. Cada usuário pode gravar apenas o próprio voto; posts e respostas são criados com o UID autenticado e data do servidor. As regras proíbem a alteração de posts ou respostas existentes.
+
+O feed mostra as 50 publicações mais recentes, de ambos os formatos. Cada discussão carrega até 200 respostas em ordem cronológica. Mudanças chegam em tempo real, sem apagar o texto que está sendo escrito. Falhas de gravação mantêm o formulário e não são anunciadas como publicações concluídas. Ao sair, os listeners e o feed são limpos.
+
+Posts antigos guardados somente no navegador não são publicados automaticamente. Use a opção de recuperar uma contribuição ou discussão antiga no formulário, revise o texto e publique para compartilhá-lo. Os três exemplos da sessão clínica permanecem identificados como demonstrações e não são enviados à nuvem.
+
+Publique o Hosting e as regras atualizadas para ativar esse fluxo:
+
+```sh
+firebase deploy --only hosting,firestore:rules
+```
+
+Verificações sem dados de produção:
+
+```sh
+node --experimental-vm-modules --test tests/community-cloud.test.cjs
+NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/community-ui.browser.cjs
+```
+
+O teste de navegador usa Chromium e o servidor HTTP na porta 8080. Simula o Firestore e verifica a troca de posts, respostas e votos entre duas contas, preservação de rascunhos durante atualizações remotas e falha de publicação. As regras de acesso precisam de validação no emulador antes da publicação; esses testes simulados não substituem essa validação.
