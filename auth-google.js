@@ -1,3 +1,4 @@
+import { loadFavorites, migrateLegacyNotes, resetStudySync } from './study-sync.js';
 import { loadProfile, resetProfileSync } from './profile-store.js';
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {
@@ -98,6 +99,7 @@ async function initializeGoogleAuth() {
     onAuthStateChanged(auth, user => {
       const revision = ++identityRevision;
       resetProfileSync();
+      resetStudySync();
       window.protocolumStopNetwork?.();
       stopForumSync?.();
       stopForumSync = undefined;
@@ -114,6 +116,10 @@ async function initializeGoogleAuth() {
       };
       window.clinicalMindGoogleSuccess?.(window.clinicalMindUser);
       loadProfile(window.clinicalMindCurrentUser()).catch(()=>console.warn('Protocolum: private profile could not be loaded from the cloud.'));
+      loadFavorites(window.clinicalMindCurrentUser()).then(()=>{
+        if (revision === identityRevision) window.clinicalMindRefreshFavorites?.();
+      }).catch(()=>console.warn('Protocolum: favorites could not be loaded from the cloud.'));
+      migrateLegacyNotes(window.clinicalMindCurrentUser()).catch(()=>console.warn('Protocolum: existing notes could not be migrated to the cloud.'));
       // Existing optional cloud features cannot prevent authentication from succeeding.
       import('./cloud-sync.js').then(async module => {
         if (revision !== identityRevision || auth.currentUser?.uid !== user.uid) return;

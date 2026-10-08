@@ -66,3 +66,17 @@ node --experimental-vm-modules --test tests/profile-store.test.cjs
 ```
 
 O teste de interface usa `@playwright/test`, Chromium em `/usr/bin/chromium` e o servidor local na porta 8080. Execute com o pacote disponível no ambiente Node (por exemplo, `NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/profile-ui.browser.cjs`). O adaptador do Firestore é simulado: o teste cobre edição, confirmação de gravação, falha de gravação e restauração em outro contexto de navegador, sem gravar dados reais. As regras de acesso devem ser validadas no emulador do Firestore antes de publicar.
+
+## Favoritos e anotações na nuvem
+
+Com Google, os favoritos são guardados em `private_study/{uid}` e as notas em `private_study/{uid}/notes/{referência}`. As regras permitem acesso somente ao titular. Os favoritos são recuperados ao entrar; a nota é recuperada ao abrir a referência. Dados locais existentes são migrados sem sobrescrever uma versão já presente na nuvem. Contas locais continuam usando apenas este navegador.
+
+Alterações de favoritos usam transações para preservar favoritos adicionados em outro dispositivo. Uma nota só recebe a confirmação “Salvo na nuvem” após a gravação no Firestore. Em caso de falha, seu rascunho permanece no navegador e pode ser reenviado pelo botão “Tentar novamente”. Edições simultâneas da mesma nota usam a última gravação confirmada.
+
+Publique o Hosting e as regras atualizadas para ativar a integração. Teste a sincronização sem dados de produção com:
+
+```sh
+node --experimental-vm-modules --test tests/profile-store.test.cjs tests/study-sync.test.cjs
+```
+
+O teste de interface de estudo usa o mesmo servidor e as dependências do teste de perfil: `NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/study-ui.browser.cjs`. O Firestore é simulado e nenhum dado de produção é alterado.

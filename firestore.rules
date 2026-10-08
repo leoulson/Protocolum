@@ -4,6 +4,25 @@ service cloud.firestore {
  // Merge these match blocks inside the existing
 // service cloud.firestore { match /databases/{database}/documents { ... } }
 // Do not replace existing rules for forum_posts or pubmed_appraisals.
+// Study data is private to the authenticated account, including each note.
+match /private_study/{uid} {
+  function owner() { return request.auth != null && request.auth.uid == uid; }
+  allow get, delete: if owner();
+  allow list: if false;
+  allow create, update: if owner()
+    && request.resource.data.keys().hasOnly(['favorites'])
+    && request.resource.data.keys().hasAll(['favorites'])
+    && request.resource.data.favorites is list
+    && request.resource.data.favorites.size() <= 2000;
+  match /notes/{guidelineId} {
+    allow get, list, delete: if owner();
+    allow create, update: if owner()
+      && request.resource.data.keys().hasOnly(['text'])
+      && request.resource.data.keys().hasAll(['text'])
+      && request.resource.data.text is string
+      && request.resource.data.text.size() <= 3000;
+  }
+}
 // Private cloud profile: only its authenticated owner can read or write it.
 match /private_profiles/{uid} {
   function owner() { return request.auth != null && request.auth.uid == uid; }
