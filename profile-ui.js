@@ -26,14 +26,18 @@ async function enhanceProfile(target) {
   }
   if (!body.isConnected || account()?.email !== user.email || account()?.firebaseUid !== user.firebaseUid) return;
   loading.remove();
-  const save = async (user, next, status) => {
+  let retryAction=null;
+  const syncMessage={saving:text('Salvando…','Saving…'),saved:text('Salvo na nuvem.','Saved to the cloud.'),error:text('Falha ao salvar. Suas alterações foram mantidas.','Failed to save. Your changes were kept.'),local:text('Salvo neste navegador.','Saved in this browser.'),dirty:text('Alterações ainda não salvas.','Changes not saved yet.')};
+  const setSync=state=>{section.querySelector('#profileSyncState').dataset.state=state;section.querySelector('#profileSyncMessage').textContent=syncMessage[state];section.querySelector('#profileSyncRetry').hidden=state!=='error';};
+  const attempt = async (operation, onSuccess, status) => {
     const controls=[...section.querySelectorAll('button, input, select, textarea')];
     const enabled=controls.filter(control=>!control.disabled);enabled.forEach(control=>control.disabled=true);
-    status.textContent=text('Salvando…','Saving…');
-    try { await saveProfile(user,next);return true; }
-    catch { status.textContent=text('Não foi possível salvar. Suas alterações continuam no formulário; tente novamente.','Could not save. Your changes remain in the form; try again.');return false; }
+    retryAction=null;setSync('saving');status.textContent=syncMessage.saving;
+    try { await operation();onSuccess();status.textContent=saved();setSync(user.authProvider==='google'?'saved':'local');return true; }
+    catch { status.textContent=text('Não foi possível salvar. Suas alterações continuam no formulário; tente novamente.','Could not save. Your changes remain in the form; try again.');retryAction=()=>attempt(operation,onSuccess,status);setSync('error');return false; }
     finally { enabled.forEach(control=>control.disabled=false); }
   };
+  const save=(next,status,onSuccess)=>attempt(()=>saveProfile(user,next),()=>{profile=normalizeProfile(next);onSuccess?.();section.dispatchEvent(new Event('profile-updated'));},status);
   const saved = () => user.authProvider === 'google' ? text('Salvo na nuvem.','Saved to the cloud.') : text('Salvo neste navegador. Entre com Google para salvar na nuvem.','Saved in this browser. Sign in with Google to save to the cloud.');
   document.getElementById('detailTitle').textContent = text('Meu perfil','My profile');
   const section = document.createElement('section');
@@ -42,6 +46,12 @@ async function enhanceProfile(target) {
   <form id="professionalProfile"><h3>${text('Sobre mim','About me')}</h3><div class="profile-fields">${field('profileRole',text('Formação / atuação','Training / role'),profile.role,80)}${field('profileSpecialty',text('Especialidade / área de interesse','Specialty / area of interest'),profile.specialty,80)}${field('profileInstitution',text('Instituição','Institution'),profile.institution)}${field('profileCity',text('Cidade','City'),profile.city,100)}</div><label for="profileBio">${text('Bio','Bio')}<textarea id="profileBio" rows="3" maxlength="600" placeholder="${text('Interesses acadêmicos e objetivos de estudo…','Academic interests and study goals…')}">${escape(profile.bio)}</textarea></label><small>${text('Evite inserir informações de pacientes. O perfil não é público.','Avoid patient information. Your profile is not public.')}</small><button class="btn primary" type="submit">${text('Salvar perfil','Save profile')}</button><p id="professionalStatus" role="status" aria-live="polite"></p></form>
   <section class="profile-friends" aria-labelledby="friendsHeading"><h3 id="friendsHeading">${text('Meus amigos','My friends')} <span id="friendsCount"></span></h3><p class="profile-hint">${text('Contatos privados do seu perfil. Não envia convites nem estabelece amizade entre contas.','Private profile contacts. No invitations are sent and no connection is established between accounts.')}</p><form id="friendForm"><div class="profile-fields">${field('friendName',text('Nome','Name'),'',80)}${field('friendEmail',text('E-mail','Email'),'',160,'email')}${field('friendSpecialty',text('Especialidade (opcional)','Specialty (optional)'),'',80)}</div><button class="btn primary" id="friendSave" type="submit">${text('Adicionar amigo','Add friend')}</button><button class="btn" id="friendCancel" type="button" hidden>${text('Cancelar edição','Cancel editing')}</button><p id="friendStatus" role="status" aria-live="polite"></p></form><label for="friendSearch">${text('Buscar na lista','Search your list')}<input id="friendSearch" type="search" maxlength="160"></label><ul id="friendList" class="profile-friend-list"></ul></section>`;
   body.prepend(section);
+  const sync=document.createElement('div');sync.className='profile-sync';sync.id='profileSyncState';sync.setAttribute('role','status');sync.setAttribute('aria-live','polite');
+  sync.innerHTML=`<span id="profileSyncMessage"></span><button id="profileSyncRetry" class="btn" type="button" hidden>${text('Tentar novamente','Try again')}</button>`;
+  section.querySelector('.profile-summary').after(sync);
+  section.querySelector('#profileSyncRetry').onclick=()=>retryAction?.();
+  section.addEventListener('input',event=>{if(event.target.id!=='friendSearch'&&sync.dataset.state!=='saving'){retryAction=null;setSync('dirty');}});
+  setSync(user.authProvider==='google'?'saved':'local');
   const get = id => section.querySelector('#' + id);
   let editing = null;
   const renderFriends = () => {
@@ -56,7 +66,7 @@ async function enhanceProfile(target) {
   get('professionalProfile').onsubmit = async event => {
     event.preventDefault();
     const next = {...profile,role:clean(get('profileRole').value,80),specialty:clean(get('profileSpecialty').value,80),institution:clean(get('profileInstitution').value),city:clean(get('profileCity').value,100),bio:clean(get('profileBio').value,600)};
-    if (await save(user,next,get('professionalStatus'))) {profile=next;section.dispatchEvent(new Event('profile-updated'));get('professionalStatus').textContent=saved();}
+    await save(next,get('professionalStatus'));
   };
   get('friendForm').onsubmit = async event => {
     event.preventDefault();
@@ -67,13 +77,13 @@ async function enhanceProfile(target) {
     if(!editing && profile.friends.length>=100){status.textContent=text('Limite de 100 contatos atingido.','100 contact limit reached.');return;}
     const friend={id:editing || (crypto.randomUUID?.() || 'friend-' + Date.now() + '-' + Math.random().toString(36).slice(2)),name,email,specialty:clean(get('friendSpecialty').value,80)};
     const next={...profile,friends:editing?profile.friends.map(f=>f.id===editing?friend:f):[...profile.friends,friend]};
-    if(await save(user,next,status)){profile=next;reset();renderFriends();status.textContent=saved();}
+    await save(next,status,()=>{reset();renderFriends();});
   };
   get('friendCancel').onclick=reset;get('friendSearch').oninput=renderFriends;
   get('friendList').onclick = async event => {
     const edit=event.target.closest('[data-edit]'), remove=event.target.closest('[data-remove]');
     if(edit){const f=profile.friends.find(f=>f.id===edit.dataset.edit);if(!f)return;editing=f.id;get('friendName').value=f.name;get('friendEmail').value=f.email;get('friendSpecialty').value=f.specialty;get('friendSave').textContent=text('Salvar amigo','Save friend');get('friendCancel').hidden=false;get('friendName').focus();}
-    if(remove){const next={...profile,friends:profile.friends.filter(f=>f.id!==remove.dataset.remove)};if(await save(user,next,get('friendStatus'))){profile=next;if(editing===remove.dataset.remove)reset();renderFriends();get('friendStatus').textContent=saved();}}
+    if(remove){const next={...profile,friends:profile.friends.filter(f=>f.id!==remove.dataset.remove)};await save(next,get('friendStatus'),()=>{if(editing===remove.dataset.remove)reset();renderFriends();});}
   };
   // Export only this account's extended profile. No credentials are included.
   const exportButton = body.querySelector('#exportData');
@@ -89,13 +99,11 @@ async function enhanceProfile(target) {
     nameForm.onsubmit=async event=>{
       event.preventDefault();const status=nameForm.querySelector('#profileStatus'),name=clean(input.value,80);
       if(name.length<2){status.textContent=text('Use pelo menos 2 caracteres.','Use at least 2 characters.');return;}
-      const button=nameForm.querySelector('button');button.disabled=true;status.textContent=text('Salvando…','Saving…');
-      try { await saveProfileName(user,name);section.querySelector('.profile-summary h3').textContent=name;section.querySelector('.profile-monogram').textContent=name.slice(0,1).toUpperCase();status.textContent=saved(); }
-      catch { status.textContent=text('Não foi possível salvar o nome. Tente novamente.','Could not save the name. Try again.'); }
-      finally {button.disabled=false;}
+      await attempt(()=>saveProfileName(user,name),()=>{section.querySelector('.profile-summary h3').textContent=name;section.querySelector('.profile-monogram').textContent=name.slice(0,1).toUpperCase();},status);
     };
   }editAbout.append(professional);
-  mountAcademic(section,user,()=>profile,async (next,status)=>{if(!await save(user,next,status))return false;profile=normalizeProfile(next);status.textContent=saved();return true;});
+  mountAcademic(section,user,()=>profile,async (next,status,afterSave)=>save(next,status,afterSave));
+  section.querySelector('.profile-summary').after(sync);
   mountNetwork(section,user,()=>profile);
   renderFriends();
 }

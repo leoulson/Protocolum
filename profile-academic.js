@@ -49,7 +49,7 @@ export function mountAcademic(section,user,getProfile,commit){
   editor.after(add);
   const get=id=>section.querySelector('#'+id);let importedDOI='',busy=false,revision=0;
   get('academicTheme').value=academic.theme;
-  const persist=async(next,status)=>{if(await commit(next,status)){academic=normalizeAcademic(next);render();return true;}return false;};
+  const persist=async(next,status,afterSave=()=>{})=>commit(next,status,()=>{academic=normalizeAcademic(next);render();afterSave();});
   function render(){
     section.dataset.academicTheme=academic.theme;
     const p=getProfile();
@@ -69,7 +69,7 @@ export function mountAcademic(section,user,getProfile,commit){
     finally{busy=false;get('academicLookup').disabled=false;}
   };
   function accountEmail(){return window.clinicalMindCurrentUser?.()?.email;}
-  get('academicArticleForm').onsubmit=async e=>{e.preventDefault();const status=get('academicArticleStatus'),doi=normalizeDOI(get('academicDOI').value);if(!doi){status.textContent=t('Informe um DOI válido.','Enter a valid DOI.');return;}if(academic.articles.some(a=>a.doi===doi)){status.textContent=t('Esse DOI já está na vitrine.','This DOI is already in your showcase.');return;}if(academic.articles.length>=100){status.textContent=t('Limite de 100 artigos atingido.','100 article limit reached.');return;}const title=get('academicArticleTitle').value.trim();if(!title){status.textContent=t('Informe o título.','Enter a title.');return;}const article={doi,title,authors:get('academicAuthors').value.trim(),journal:get('academicJournal').value.trim(),year:get('academicYear').value,relationship:get('academicRelationship').value,featured:false,metadataSource:importedDOI===doi?'Crossref':'manual'};if(await persist({...getProfile(),articles:[...academic.articles,article]},status)){get('academicArticleForm').reset();revision++;importedDOI='';}};
+  get('academicArticleForm').onsubmit=async e=>{e.preventDefault();const status=get('academicArticleStatus'),doi=normalizeDOI(get('academicDOI').value);if(!doi){status.textContent=t('Informe um DOI válido.','Enter a valid DOI.');return;}if(academic.articles.some(a=>a.doi===doi)){status.textContent=t('Esse DOI já está na vitrine.','This DOI is already in your showcase.');return;}if(academic.articles.length>=100){status.textContent=t('Limite de 100 artigos atingido.','100 article limit reached.');return;}const title=get('academicArticleTitle').value.trim();if(!title){status.textContent=t('Informe o título.','Enter a title.');return;}const article={doi,title,authors:get('academicAuthors').value.trim(),journal:get('academicJournal').value.trim(),year:get('academicYear').value,relationship:get('academicRelationship').value,featured:false,metadataSource:importedDOI===doi?'Crossref':'manual'};await persist({...getProfile(),articles:[...academic.articles,article]},status,()=>{get('academicArticleForm').reset();revision++;importedDOI='';});};
   get('academicArticles').onclick=async e=>{const feature=e.target.closest('[data-feature-doi]'),remove=e.target.closest('[data-remove-doi]');if(!feature&&!remove)return;const articles=remove?academic.articles.filter(a=>a.doi!==remove.dataset.removeDoi):academic.articles.map(a=>a.doi===feature.dataset.featureDoi?{...a,featured:!a.featured}:a);await persist({...getProfile(),articles},get('academicArticleStatus'));};
   section.addEventListener('profile-updated',()=>{academic=normalizeAcademic(getProfile());render();});
   render();

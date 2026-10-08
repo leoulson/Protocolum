@@ -4,7 +4,7 @@ Aplicação web educacional de medicina baseada em evidências, construída com 
 
 ## Recursos
 
-- Biblioteca de diretrizes, literatura e referências.
+- Biblioteca online de diretrizes, literatura e referências consultadas no PubMed/NCBI.
 - Comparador de diretrizes e fluxogramas interativos.
 - Feed PubMed e laboratório de leitura crítica.
 - Discussões de casos clínicos.
@@ -103,3 +103,22 @@ NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/community-ui.brow
 ```
 
 O teste de navegador usa Chromium e o servidor HTTP na porta 8080. Simula o Firestore e verifica a troca de posts, respostas e votos entre duas contas, preservação de rascunhos durante atualizações remotas e falha de publicação. As regras de acesso precisam de validação no emulador antes da publicação; esses testes simulados não substituem essa validação.
+
+## Biblioteca online e estado do perfil
+
+A biblioteca inicia vazia e obtém títulos, autores, resumos, datas, tipos de publicação e links pela API pública E-utilities do PubMed/NCBI. Não utiliza as antigas fichas incorporadas ao HTML nem o cache antigo da biblioteca. As fontes e os destaques são gerados pelos resultados online. Cada registro tem um PMID estável para favoritos e notas. Favoritos e histórico com IDs PubMed são recuperados pela API, mesmo quando a publicação não faz parte dos resultados recentes. IDs das antigas fichas fixas continuam guardados no armazenamento, mas suas fichas não fazem parte da biblioteca online.
+
+A consulta inicial procura até 40 diretrizes dos últimos cinco anos e 40 ensaios/revisões do último ano nas áreas clínicas do site. “Buscar na internet” pesquisa o tema digitado sem limitar a data; um PMID numérico consulta diretamente o registro e abre a aba Literatura. Os filtros de revista e população vêm dos metadados recebidos. CID e cenário não são inferidos. A API não exige credenciais e suas requisições são espaçadas conforme o limite do NCBI.
+
+Em uma falha inicial, a biblioteca exibe um erro com nova tentativa, sem preencher o feed com dados do arquivo do site. Se a atualização de uma consulta já concluída falhar, os resultados dessa consulta online permanecem identificados como anteriores. PubMed indexa publicações; isso não confirma vigência, força de recomendação ou aplicabilidade clínica.
+
+No perfil, um indicador mostra “Salvando”, “Salvo na nuvem”, “Falha ao salvar” ou alterações pendentes. “Tentar novamente” repete a operação que falhou, inclusive nome, apresentação, artigos e contatos, sem apagar o formulário. Uma nova edição cancela a tentativa anterior para não reenviar valores desatualizados. Contas locais mostram salvamento no navegador.
+
+Testes de interface:
+
+```sh
+NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/library-ui.browser.cjs
+NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/profile-ui.browser.cjs
+```
+
+Esses testes usam respostas controladas de PubMed e Firestore, sem alterar dados de produção. O teste da biblioteca cobre falhas sem dados fixos, recuperação de favoritos, busca remota, PMID, conteúdo escapado e XML inválido. O teste de perfil cobre estados de salvamento, falha, nova tentativa e restauração em outro contexto.
