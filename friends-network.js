@@ -1,3 +1,5 @@
+import { saveProfileSharing } from './profile-store.js';
+import { SHARE_FIELDS, normalizeSharing } from './profile-sharing.js';
 import { normalizeAcademic } from './profile-academic.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const t=(pt,en)=>document.documentElement.lang.startsWith('en')?en:pt;
@@ -6,7 +8,7 @@ const pair=(a,b)=>[a,b].sort().join('~');
 let stops=[];
 export function stopNetwork(){stops.forEach(stop=>stop());stops=[];}
 window.protocolumStopNetwork=stopNetwork;
-export async function mountNetwork(section,localUser,getProfile){
+export async function mountNetwork(section,localUser,getProfile,onProfileSaved=()=>{}){
   stopNetwork();
   const root=document.createElement('section');root.className='network-panel';root.setAttribute('aria-labelledby','networkTitle');
   root.innerHTML=`<header><h2 id="networkTitle">${t('Rede acadêmica','Academic network')}</h2><p>${t('Encontre colegas e construa conexões com aceite mútuo.','Find colleagues and build mutually accepted connections.')}</p></header><p id="networkStatus" role="status" aria-live="polite"></p><div id="networkContent"></div>`;
@@ -14,11 +16,11 @@ export async function mountNetwork(section,localUser,getProfile){
   section.querySelector('.profile-friends h3').firstChild.textContent=t('Contatos pessoais ','Personal contacts ');
   const status=root.querySelector('#networkStatus'),content=root.querySelector('#networkContent');
   status.textContent=t('Carregando a rede acadêmica…','Loading academic network…');
-  let db,auth,collection,doc,getDoc,getDocs,setDoc,deleteDoc,query,where,orderBy,startAt,endAt,limit,onSnapshot,runTransaction;
+  let db,auth,collection,doc,getDoc,getDocs,query,where,orderBy,startAt,endAt,limit,onSnapshot,runTransaction;
   try {
     const [firebase,store]=await Promise.all([import('./auth-google.js'),import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js')]);
     ({db,auth}=firebase);
-    ({collection,doc,getDoc,getDocs,setDoc,deleteDoc,query,where,orderBy,startAt,endAt,limit,onSnapshot,runTransaction}=store);
+    ({collection,doc,getDoc,getDocs,query,where,orderBy,startAt,endAt,limit,onSnapshot,runTransaction}=store);
   } catch {
     if(root.isConnected)status.textContent=t('A rede está indisponível. Seu perfil, Lattes, ORCID e vitrine DOI continuam disponíveis abaixo e acima.','The network is unavailable. Your profile, Lattes, ORCID and DOI showcase remain available.');
     return;
@@ -36,7 +38,8 @@ export async function mountNetwork(section,localUser,getProfile){
   stops.push(()=>{viewGeneration++;dialog.close();dialog.remove();});
   const active=()=>root.isConnected&&auth?.currentUser?.uid===uid;
   const fail=error=>{if(active())status.textContent=error.code==='permission-denied'?t('A rede aguarda ativação das regras de acesso do Firebase. Seus dados locais foram preservados.','The network requires Firebase access rules activation. Your local data was preserved.'):t('Não foi possível acessar a rede. Verifique a conexão e tente novamente.','Could not access the network. Check your connection and retry.');};
-  content.innerHTML=`<div class="network-publish"><p>${t('Publique seu perfil para aparecer no buscador. Serão compartilhados nome, bio, formação, instituição, cidade, Lattes, ORCID e artigos. E-mail e contatos pessoais ficam privados.','Publish your profile to appear in search. Name, bio, training, institution, city, Lattes, ORCID and articles are shared. Email and personal contacts remain private.')}</p><button class="btn primary" id="networkPublish">${t('Publicar / atualizar perfil','Publish / update profile')}</button><button class="btn" id="networkHide">${t('Retirar perfil da busca','Remove profile from search')}</button></div><form id="networkSearchForm"><label for="networkSearch">${t('Buscar colegas pelo início do nome','Search colleagues by the start of their name')}<input id="networkSearch" type="search" minlength="2" maxlength="80" required placeholder="${t('Ex.: Leonardo','E.g. Leonardo')}"></label><button class="btn" type="submit">${t('Buscar','Search')}</button></form><div id="networkResults" class="network-cards"></div><h3>${t('Pedidos de amizade','Friend requests')}</h3><div id="networkRequests" class="network-cards"></div><h3>${t('Amigos','Friends')}</h3><div id="networkFriends" class="network-cards"></div>`;
+  const labels={role:t('Formação / atuação','Training / role'),specialty:t('Especialidade','Specialty'),institution:t('Instituição','Institution'),city:t('Cidade','City'),bio:t('Bio','Biography'),orcid:'ORCID',lattes:'Lattes',articles:t('Publicações','Publications')};
+  content.innerHTML=`<div class="network-publish"><h3>${t('Compartilhamento do perfil','Profile sharing')}</h3><p>${t('Escolha o que aparece no perfil da rede. Seu nome permanece visível; e-mail, contatos pessoais, favoritos e notas são privados.','Choose what appears in your network profile. Your name stays visible; email, personal contacts, favorites and notes are private.')}</p><fieldset id="networkVisibility"><legend>${t('Informações visíveis','Visible information')}</legend>${SHARE_FIELDS.map(field=>`<label><input type="checkbox" data-share-field="${field}"> ${labels[field]}</label>`).join('')}</fieldset><label class="network-auto"><input type="checkbox" id="networkAutoUpdate"> ${t('Atualizar o perfil publicado automaticamente ao salvar alterações','Automatically update the published profile when saving changes')}</label><p id="networkSharingState" role="status"></p><button class="btn primary" type="button" id="networkPublish">${t('Publicar / salvar compartilhamento','Publish / save sharing')}</button><button class="btn" type="button" id="networkHide">${t('Retirar perfil da rede','Remove profile from network')}</button></div><form id="networkSearchForm"><label for="networkSearch">${t('Buscar colegas pelo início do nome','Search colleagues by the start of their name')}<input id="networkSearch" type="search" minlength="2" maxlength="80" required placeholder="${t('Ex.: Leonardo','E.g. Leonardo')}"></label><button class="btn" type="submit">${t('Buscar','Search')}</button></form><div id="networkResults" class="network-cards"></div><h3>${t('Pedidos de amizade','Friend requests')}</h3><div id="networkRequests" class="network-cards"></div><h3>${t('Amigos','Friends')}</h3><div id="networkFriends" class="network-cards"></div>`;
   const get=id=>root.querySelector('#'+id);
   const relationship=other=>links.find(r=>r.members.includes(other));
   const card=(p)=>{
@@ -56,14 +59,23 @@ export async function mountNetwork(section,localUser,getProfile){
     }catch(error){fail(error);}
   }
   stops.push(onSnapshot(query(collection(db,'network_connections'),where('members','array-contains',uid)),snapshot=>{links=snapshot.docs.map(d=>({...d.data(),id:d.id}));renderLinks();},fail));
-  get('networkPublish').onclick=async event=>{
-    event.target.disabled=true;
-    try{const p=getProfile(),academic=normalizeAcademic(p),name=window.clinicalMindCurrentUser?.()?.name||user.displayName||'Protocolum';
-      await setDoc(doc(db,'network_profiles',uid),{uid,name:name.slice(0,80),nameSearch:normalized(name).slice(0,80),role:p.role,specialty:p.specialty,institution:p.institution,city:p.city,bio:p.bio,orcid:academic.orcid,lattes:academic.lattes,articles:academic.articles,theme:academic.theme});
-      if(active())status.textContent=t('Perfil publicado. Atualize novamente após editar seus dados locais.','Profile published. Update it again after editing your local details.');
-    }catch(error){fail(error);}finally{event.target.disabled=false;}
-  };
-  get('networkHide').onclick=async event=>{event.target.disabled=true;try{await deleteDoc(doc(db,'network_profiles',uid));if(active())status.textContent=t('Perfil retirado da busca. Suas amizades e seu perfil local foram mantidos.','Profile removed from search. Friendships and your local profile are preserved.');}catch(error){fail(error);}finally{event.target.disabled=false;}};
+  function renderSharing(){
+    const sharing=normalizeSharing(getProfile().sharing);
+    get('networkAutoUpdate').checked=sharing.autoUpdate;
+    root.querySelectorAll('[data-share-field]').forEach(input=>{input.checked=sharing.visible.includes(input.dataset.shareField);});
+    get('networkSharingState').textContent=!sharing.published?t('Perfil não publicado. Salvar alterações privadas não publica seu perfil.','Profile not published. Saving private changes does not publish your profile.'):sharing.autoUpdate?t('Perfil publicado · atualização automática ativada.','Profile published · automatic updates enabled.'):t('Perfil publicado · atualização manual.','Profile published · manual updates.');
+    get('networkHide').hidden=!sharing.published;
+  }
+  const sharingUpdated=()=>renderSharing();section.addEventListener('profile-updated',sharingUpdated);stops.push(()=>section.removeEventListener('profile-updated',sharingUpdated));renderSharing();
+  async function updateSharing(settings){
+    const controls=[...root.querySelectorAll('.network-publish button,.network-publish input')];controls.forEach(control=>control.disabled=true);status.textContent=t('Salvando compartilhamento…','Saving sharing settings…');
+    try{const profile=await saveProfileSharing(localUser,settings);if(!active())return;onProfileSaved(profile);renderSharing();status.textContent=settings.published?t('Perfil compartilhado salvo na nuvem.','Shared profile saved to the cloud.'):t('Perfil retirado da rede. Seu perfil privado e suas amizades foram mantidos.','Profile removed from the network. Your private profile and friendships were preserved.');}
+    catch(error){fail(error);if(active())status.textContent+=t(' As opções não foram salvas. Clique novamente para tentar.',' Options were not saved. Click again to retry.');}
+    finally{controls.forEach(control=>control.disabled=false);}
+  }
+  root.querySelector('.network-publish').addEventListener('change',()=>{get('networkSharingState').textContent=t('Opções alteradas. Clique em Publicar / salvar compartilhamento para aplicá-las.','Options changed. Click Publish / save sharing to apply them.');});
+  get('networkPublish').onclick=()=>updateSharing({published:true,autoUpdate:get('networkAutoUpdate').checked,visible:[...root.querySelectorAll('[data-share-field]:checked')].map(input=>input.dataset.shareField)});
+  get('networkHide').onclick=()=>updateSharing({...normalizeSharing(getProfile().sharing),published:false});
   get('networkSearchForm').onsubmit=async event=>{event.preventDefault();const term=normalized(get('networkSearch').value);if(term.length<2)return;const button=event.currentTarget.querySelector('button');button.disabled=true;status.textContent=t('Buscando…','Searching…');try{const snapshot=await getDocs(query(collection(db,'network_profiles'),orderBy('nameSearch'),startAt(term),endAt(term+'\uf8ff'),limit(20)));if(!active())return;results=snapshot.docs.map(d=>d.data()).filter(p=>p.uid!==uid);get('networkResults').innerHTML=results.map(card).join('');status.textContent=results.length?`${results.length} ${t('perfil(is) encontrado(s).','profile(s) found.')}`:t('Nenhum perfil publicado encontrado.','No published profiles found.');}catch(error){fail(error);}finally{button.disabled=false;}};
   async function openProfile(other,opener){
     if(opener)viewOpener=opener;dialog.dataset.academicTheme='ocean';

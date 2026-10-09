@@ -47,7 +47,7 @@ O conteúdo é educacional. Consulte as fontes completas e os protocolos locais.
 Direitos reservados a Leonardo Spolon Ulson. Nenhuma licença de redistribuição foi concedida neste repositório.
 ## Rede acadêmica — ativação
 
-A rede utiliza Firebase Authentication (Google), network_profiles e network_connections no Firestore.
+A rede utiliza Firebase Authentication (Google), network_profiles e network_connections no Firestore. As preferências de compartilhamento ficam no perfil privado, em private_profiles/{uid}.
 
 O Firestore padrão do projeto está ativo em São Paulo (southamerica-east1). As regras completas estão em firestore.rules e são referenciadas por firebase.json. Para atualizar as regras: firebase deploy --only firestore:rules. O arquivo network-rules.fragment.txt é apenas uma referência dos blocos da rede, não um arquivo completo para deploy.
 
@@ -130,3 +130,15 @@ Em **Perfil → Rede acadêmica → Amigos**, use **Ver perfil** para abrir o pe
 Nos contatos pessoais, **Buscar perfil** consulta os perfis publicados pelo nome e permite escolher o colega correto; um contato por e-mail não é automaticamente vinculado a uma conta. É necessário entrar com Google e o colega precisa publicar seu perfil na rede. E-mail, contatos pessoais, favoritos e notas privados não são exibidos. As permissões existentes de `network_profiles` são mantidas.
 
 Validação de interface: `NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/friends-network.browser.cjs` (Firestore simulado; não comprova acesso no Firebase de produção).
+
+### Atualização automática e visibilidade do perfil
+
+Em **Perfil → Rede acadêmica → Compartilhamento do perfil**, escolha quais campos serão visíveis e clique em **Publicar / salvar compartilhamento**. Nome e tema identificam o perfil; formação, especialidade, instituição, cidade, bio, ORCID, Lattes e artigos têm controles individuais. E-mail, contatos, favoritos e notas não fazem parte do documento compartilhado. Ocultar um campo remove seu conteúdo do perfil da rede, preservando o dado privado.
+
+Com **Atualizar o perfil publicado automaticamente ao salvar alterações** ativado, salvar o perfil, nome, links acadêmicos ou artigos atualiza o documento compartilhado. Desative para manter atualizações manuais; use o botão de compartilhamento para publicar a versão atual. **Retirar perfil da rede** interrompe a publicação e mantém amizades e dados privados. Novos perfis começam sem publicação. Perfis legados já publicados são reconhecidos com os campos anteriormente compartilhados; a atualização automática passa a acompanhá-los ao salvar.
+
+Preferências, dados privados e conteúdo público são salvos em uma transação Firestore. Se a operação falhar, nenhum desses documentos muda. As preferências atuais do servidor prevalecem sobre as de um editor antigo ao salvar dados privados; um perfil retirado não é recriado automaticamente. As opções permanecem disponíveis para repetir uma tentativa que falhou.
+
+**Publicação necessária:** as novas regras em `firestore.rules` aceitam e validam o campo privado `sharing`. Publique as regras junto ao site (`firebase deploy --only firestore:rules,hosting`) com autenticação autorizada antes de usar esta versão em produção. O ambiente de desenvolvimento não possui autenticação de implantação; o envio ao GitHub não publica essas regras.
+
+Testes: `node --experimental-vm-modules --test tests/*.test.cjs` e `NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/profile-sharing.browser.cjs`. Os testes de navegador simulam o Firestore; não validam regras ou salvamentos no projeto de produção.

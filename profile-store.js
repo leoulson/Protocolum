@@ -1,3 +1,4 @@
+import { normalizeSharing, sharedProfile } from './profile-sharing.js';
 import { normalizeProfile } from './profile-data.js';
 
 const localKey = user => 'protocolum.profile.v1.' + (user.authProvider === 'google' ? 'uid.' + user.firebaseUid : user.email.toLowerCase());
@@ -22,7 +23,7 @@ async function cloud(user) {
   ]);
   current(user);
   if (!firebase.db || firebase.auth?.currentUser?.uid !== user.firebaseUid) throw new Error('Google sign-in required');
-  return { ...store, ref: store.doc(firebase.db, 'private_profiles', user.firebaseUid) };
+  return { ...store, db:firebase.db, ref: store.doc(firebase.db, 'private_profiles', user.firebaseUid) };
 }
 function rememberName(user, name) {
   current(user);
@@ -41,6 +42,7 @@ export async function loadProfile(user) {
       let profile;
       if (snapshot.exists()) {
         const data=snapshot.data();profile=normalizeProfile(data);
+        if(!data.sharing){const publicProfile=await store.getDocFromServer(store.doc(store.db,'network_profiles',user.firebaseUid));current(user);profile.sharing.published=publicProfile.exists();}
         if (typeof data.name === 'string' && data.name.trim()) rememberName(user,data.name.trim().slice(0,80));
       } else {
         profile=cached(user);
@@ -60,31 +62,40 @@ function enqueue(operation) {
   writeQueue=result.catch(()=>{});
   return result;
 }
-export function saveProfile(user, value) {
+async function persist(user,value,name,sharingOverride){
+  await loadProfile(user);
+  const store=await cloud(user),publicRef=store.doc(store.db,'network_profiles',user.firebaseUid);
+  const inferred=(await loadProfile(user)).sharing;
+  const profile=await store.runTransaction(store.db,async transaction=>{
+    const snapshot=await transaction.get(store.ref);current(user);
+    const remote=snapshot.data()||{},next=value?normalizeProfile(value):normalizeProfile(remote);
+    const sharing=normalizeSharing(sharingOverride||remote.sharing||inferred);
+    // Read before writing. A withdrawn public profile must never be recreated by a stale editor.
+    const published=sharing.published?await transaction.get(publicRef):null;current(user);
+    if(sharing.published&&!published.exists()&&!sharingOverride)sharing.published=false;
+    next.sharing=sharing;
+    const savedName=name||remote.name||window.clinicalMindCurrentUser().name;
+    transaction.set(store.ref,{...next,name:savedName},{merge:true});
+    if(sharingOverride&&!sharing.published)transaction.delete(publicRef);
+    else if(sharing.published&&(sharing.autoUpdate||sharingOverride))transaction.set(publicRef,sharedProfile(user.firebaseUid,savedName,next,sharing));
+    return next;
+  });
+  current(user);loads.set(identity(user),Promise.resolve(profile));localStorage.setItem(localKey(user),JSON.stringify(profile));
+  return profile;
+}
+export function saveProfile(user,value){
   const profile=normalizeProfile(value);
   return enqueue(async()=>{
     current(user);
-    if (user.authProvider === 'google') {
-      await loadProfile(user);
-      const store=await cloud(user);
-      await store.setDoc(store.ref,profile,{merge:true});
-      current(user);
-      loads.set(identity(user),Promise.resolve(profile));
-    }
-    localStorage.setItem(localKey(user),JSON.stringify(profile));
+    if(user.authProvider==='google')return persist(user,profile);
+    localStorage.setItem(localKey(user),JSON.stringify(profile));return profile;
   });
 }
-export function saveProfileName(user, name) {
-  if (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 80) return Promise.reject(new Error('Invalid name'));
+export function saveProfileSharing(user,settings){
+  return enqueue(async()=>{current(user);if(user.authProvider!=='google')throw new Error('Google sign-in required');return persist(user,null,null,normalizeSharing(settings));});
+}
+export function saveProfileName(user,name){
+  if(typeof name!=='string'||name.trim().length<2||name.trim().length>80)return Promise.reject(new Error('Invalid name'));
   name=name.trim();
-  return enqueue(async()=>{
-    current(user);
-    if (user.authProvider === 'google') {
-      await loadProfile(user);
-      const store=await cloud(user);
-      await store.setDoc(store.ref,{name},{merge:true});
-      current(user);
-    }
-    rememberName(user,name);
-  });
+  return enqueue(async()=>{current(user);if(user.authProvider==='google')await persist(user,null,name);rememberName(user,name);});
 }

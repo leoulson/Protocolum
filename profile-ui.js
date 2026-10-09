@@ -37,7 +37,7 @@ async function enhanceProfile(target) {
     catch { status.textContent=text('Não foi possível salvar. Suas alterações continuam no formulário; tente novamente.','Could not save. Your changes remain in the form; try again.');retryAction=()=>attempt(operation,onSuccess,status);setSync('error');return false; }
     finally { enabled.forEach(control=>control.disabled=false); }
   };
-  const save=(next,status,onSuccess)=>attempt(()=>saveProfile(user,next),()=>{profile=normalizeProfile(next);onSuccess?.();section.dispatchEvent(new Event('profile-updated'));},status);
+  const save=(next,status,onSuccess)=>{let result;return attempt(async()=>{result=await saveProfile(user,next);},()=>{profile=normalizeProfile(result);onSuccess?.();section.dispatchEvent(new Event('profile-updated'));},status);};
   const saved = () => user.authProvider === 'google' ? text('Salvo na nuvem.','Saved to the cloud.') : text('Salvo neste navegador. Entre com Google para salvar na nuvem.','Saved in this browser. Sign in with Google to save to the cloud.');
   document.getElementById('detailTitle').textContent = text('Meu perfil','My profile');
   const section = document.createElement('section');
@@ -50,7 +50,7 @@ async function enhanceProfile(target) {
   sync.innerHTML=`<span id="profileSyncMessage"></span><button id="profileSyncRetry" class="btn" type="button" hidden>${text('Tentar novamente','Try again')}</button>`;
   section.querySelector('.profile-summary').after(sync);
   section.querySelector('#profileSyncRetry').onclick=()=>retryAction?.();
-  section.addEventListener('input',event=>{if(event.target.id!=='friendSearch'&&sync.dataset.state!=='saving'){retryAction=null;setSync('dirty');}});
+  section.addEventListener('input',event=>{if(event.target.id!=='friendSearch'&&!event.target.closest('.network-panel')&&sync.dataset.state!=='saving'){retryAction=null;setSync('dirty');}});
   setSync(user.authProvider==='google'?'saved':'local');
   const get = id => section.querySelector('#' + id);
   let editing = null;
@@ -101,12 +101,12 @@ async function enhanceProfile(target) {
     nameForm.onsubmit=async event=>{
       event.preventDefault();const status=nameForm.querySelector('#profileStatus'),name=clean(input.value,80);
       if(name.length<2){status.textContent=text('Use pelo menos 2 caracteres.','Use at least 2 characters.');return;}
-      await attempt(()=>saveProfileName(user,name),()=>{section.querySelector('.profile-summary h3').textContent=name;section.querySelector('.profile-monogram').textContent=name.slice(0,1).toUpperCase();},status);
+      await attempt(async()=>{await saveProfileName(user,name);profile=await loadProfile(user);},()=>{section.dispatchEvent(new Event('profile-updated'));section.querySelector('.profile-summary h3').textContent=name;section.querySelector('.profile-monogram').textContent=name.slice(0,1).toUpperCase();},status);
     };
   }editAbout.append(professional);
   mountAcademic(section,user,()=>profile,async (next,status,afterSave)=>save(next,status,afterSave));
   section.querySelector('.profile-summary').after(sync);
-  mountNetwork(section,user,()=>profile);
+  mountNetwork(section,user,()=>profile,next=>{profile=normalizeProfile(next);section.dispatchEvent(new Event('profile-updated'));});
   renderFriends();
 }
 export function renderProfilePage() {
