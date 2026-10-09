@@ -1,6 +1,6 @@
 import { normalizeProfile } from './profile-data.js';
 export { normalizeProfile } from './profile-data.js';
-import { loadProfile, saveProfile, saveProfileName } from './profile-store.js';
+import { loadProfile, saveProfile, saveProfileName, subscribeProfileUpdates, reconnectProfileUpdates } from './profile-store.js';
 import { mountNetwork, stopNetwork } from './friends-network.js';
 import { mountAcademic } from './profile-academic.js';
 const text = (pt, en) => document.documentElement.lang.startsWith('en') ? en : pt;
@@ -26,7 +26,7 @@ async function enhanceProfile(target) {
   }
   if (!body.isConnected || account()?.email !== user.email || account()?.firebaseUid !== user.firebaseUid) return;
   loading.remove();
-  let retryAction=null;
+  let retryAction=null,profileName=account()?.name||user.name;
   const syncMessage={saving:text('Salvando…','Saving…'),saved:text('Salvo na nuvem.','Saved to the cloud.'),error:text('Falha ao salvar. Suas alterações foram mantidas.','Failed to save. Your changes were kept.'),local:text('Salvo neste navegador.','Saved in this browser.'),dirty:text('Alterações ainda não salvas.','Changes not saved yet.')};
   const setSync=state=>{section.querySelector('#profileSyncState').dataset.state=state;section.querySelector('#profileSyncMessage').textContent=syncMessage[state];section.querySelector('#profileSyncRetry').hidden=state!=='error';};
   const attempt = async (operation, onSuccess, status) => {
@@ -37,7 +37,7 @@ async function enhanceProfile(target) {
     catch { status.textContent=text('Não foi possível salvar. Suas alterações continuam no formulário; tente novamente.','Could not save. Your changes remain in the form; try again.');retryAction=()=>attempt(operation,onSuccess,status);setSync('error');return false; }
     finally { enabled.forEach(control=>control.disabled=false); }
   };
-  const save=(next,status,onSuccess)=>{let result;return attempt(async()=>{result=await saveProfile(user,next);},()=>{profile=normalizeProfile(result);onSuccess?.();section.dispatchEvent(new Event('profile-updated'));},status);};
+  const save=(next,status,onSuccess)=>{const baseline=profile;let result;return attempt(async()=>{result=await saveProfile(user,next,{base:baseline});},()=>{profile=normalizeProfile(result);for(const [field,id,max]of [['role','profileRole',80],['specialty','profileSpecialty',80],['institution','profileInstitution',160],['city','profileCity',100],['bio','profileBio',600],['orcid','academicORCID',320],['lattes','academicLattes',320],['theme','academicTheme',20]]){const input=section.querySelector('#'+id);if(input&&(clean(input.value,max)===baseline[field]||clean(input.value,max)===next[field]))input.value=profile[field];}const nameInput=section.querySelector('#profileName');if(nameInput?.value.trim()===profileName){profileName=account()?.name||profileName;nameInput.value=profileName;section.querySelector('.profile-summary h3').textContent=profileName;section.querySelector('.profile-monogram').textContent=profileName.slice(0,1).toUpperCase();}renderFriends();onSuccess?.();section.dispatchEvent(new Event('profile-updated'));},status);};
   const saved = () => user.authProvider === 'google' ? text('Salvo na nuvem.','Saved to the cloud.') : text('Salvo neste navegador. Entre com Google para salvar na nuvem.','Saved in this browser. Sign in with Google to save to the cloud.');
   document.getElementById('detailTitle').textContent = text('Meu perfil','My profile');
   const section = document.createElement('section');
@@ -101,13 +101,28 @@ async function enhanceProfile(target) {
     nameForm.onsubmit=async event=>{
       event.preventDefault();const status=nameForm.querySelector('#profileStatus'),name=clean(input.value,80);
       if(name.length<2){status.textContent=text('Use pelo menos 2 caracteres.','Use at least 2 characters.');return;}
-      await attempt(async()=>{await saveProfileName(user,name);profile=await loadProfile(user);},()=>{section.dispatchEvent(new Event('profile-updated'));section.querySelector('.profile-summary h3').textContent=name;section.querySelector('.profile-monogram').textContent=name.slice(0,1).toUpperCase();},status);
+      await attempt(async()=>{await saveProfileName(user,name);profile=await loadProfile(user);},()=>{section.dispatchEvent(new Event('profile-updated'));profileName=name;section.querySelector('.profile-summary h3').textContent=name;section.querySelector('.profile-monogram').textContent=name.slice(0,1).toUpperCase();},status);
     };
   }editAbout.append(professional);
   mountAcademic(section,user,()=>profile,async (next,status,afterSave)=>save(next,status,afterSave));
   section.querySelector('.profile-summary').after(sync);
   mountNetwork(section,user,()=>profile,next=>{profile=normalizeProfile(next);section.dispatchEvent(new Event('profile-updated'));});
   renderFriends();
+  const notice=document.createElement('div');notice.className='profile-live-notice';notice.hidden=true;notice.setAttribute('role','status');sync.after(notice);
+  let pendingRemote=null,noticeKind='';
+  const hasDraft=()=>[['role','profileRole'],['specialty','profileSpecialty'],['institution','profileInstitution'],['city','profileCity'],['bio','profileBio'],['orcid','academicORCID'],['lattes','academicLattes'],['theme','academicTheme']].some(([field,id])=>section.querySelector('#'+id)?.value.trim()!==profile[field])||section.querySelector('#profileName')?.value.trim()!==profileName||['#friendForm input','#academicArticleForm input'].some(selector=>[...section.querySelectorAll(selector)].some(input=>input.value.trim()));
+  const stopLive=subscribeProfileUpdates(update=>{
+    if(update.uid!==user.firebaseUid||account()?.firebaseUid!==user.firebaseUid||!section.isConnected)return;
+    if(update.status==='error'){noticeKind='error';notice.hidden=false;notice.textContent=text('Atualização em tempo real interrompida. Suas edições foram mantidas.','Live updates interrupted. Your edits were kept.');const retry=document.createElement('button');retry.className='btn';retry.textContent=text('Reconectar','Reconnect');retry.onclick=()=>{retry.disabled=true;reconnectProfileUpdates(user).catch(()=>{retry.disabled=false;});};notice.append(retry);return;}
+    if(update.changed===false){if(noticeKind==='error')notice.hidden=true;return;}
+    if(sync.dataset.state==='saving'){pendingRemote=update;return;}
+    if(hasDraft()||['dirty','error'].includes(sync.dataset.state)||section.querySelector('[data-share-field]')&&section.querySelector('#networkSharingState')?.textContent.startsWith(text('Opções alteradas.','Options changed.'))){
+      noticeKind='remote';notice.hidden=false;notice.textContent=text('Perfil atualizado em outro dispositivo. Suas edições continuam no formulário.','Profile updated on another device. Your edits remain in the form.');const reload=document.createElement('button');reload.className='btn';reload.textContent=text('Descartar edições e carregar da nuvem','Discard edits and load from cloud');reload.onclick=()=>renderProfilePage();notice.append(reload);return;
+    }
+    renderProfilePage();
+  });
+  const observer=new MutationObserver(()=>{if(!section.isConnected){stopLive();observer.disconnect();}});observer.observe(document.getElementById('recommendations'),{childList:true});
+  section.addEventListener('profile-updated',()=>{notice.hidden=true;if(pendingRemote){const update=pendingRemote;pendingRemote=null;if(JSON.stringify(update.profile)!==JSON.stringify(profile))setTimeout(()=>{if(section.isConnected)reconnectProfileUpdates(user).catch(()=>{});},0);}});
 }
 export function renderProfilePage() {
   stopNetwork();

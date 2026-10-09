@@ -5,7 +5,12 @@ const google = user => user.authProvider === 'google';
 const favoriteKey = user => `clinicalmind.favorites.${user.email}`;
 const noteKey = (user,id) => `clinicalmind.notes.${google(user) ? 'uid.'+user.firebaseUid : user.email}.${id}`;
 const draftKey = (user,id) => `protocolum.note-draft.${identity(user)}.${id}`;
-const favoritesLoads = new Map(), queues = new Map();
+const favoritesLoads = new Map(), queues = new Map(),favoriteWatches=new Map();let watchVersion=0;
+function watchFavorites(store,user,version){
+ const key=identity(user);if(version!==watchVersion||favoriteWatches.has(key)||!store.onSnapshot)return;
+ const valid=()=>version===watchVersion&&identity(active())===key;
+ const stop=store.onSnapshot(store.ref,{includeMetadataChanges:true},snapshot=>{if(!valid()||snapshot.metadata?.hasPendingWrites||snapshot.metadata?.fromCache)return;const ids=favorites(snapshot.data()?.favorites),before=favorites(read(favoriteKey(user),[]));favoritesLoads.set(key,Promise.resolve(ids));localStorage.setItem(favoriteKey(user),JSON.stringify(ids));if(JSON.stringify(before)!==JSON.stringify(ids))window.clinicalMindRefreshFavorites?.();window.dispatchEvent?.(new CustomEvent('protocolum-favorites-sync-ready'));},()=>{if(valid())window.dispatchEvent?.(new CustomEvent('protocolum-favorites-sync-error'));});favoriteWatches.set(key,stop);
+}
 const favorites = value => [...new Set((Array.isArray(value)?value:[]).filter(id=>typeof id==='string' && id.length>0 && id.length<=200))].slice(0,2000);
 function read(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 function cachedNote(user,id) { const value=read(noteKey(user,id),read(`clinicalmind.notes.${user.email}.${id}`,''));return typeof value==='string'?value.slice(0,3000):''; }
@@ -16,13 +21,14 @@ async function cloud(user) {
   return {...store,ref:store.doc(firebase.db,'private_study',user.firebaseUid),note:id=>store.doc(firebase.db,'private_study',user.firebaseUid,'notes',encodeURIComponent(id))};
 }
 function enqueue(key,operation) {const result=(queues.get(key)||Promise.resolve()).then(operation);const tail=result.catch(()=>{});queues.set(key,tail);tail.finally(()=>{if(queues.get(key)===tail)queues.delete(key);});return result;}
-export function resetStudySync() { favoritesLoads.clear(); }
+export async function reconnectFavoriteUpdates(user){const version=++watchVersion;favoriteWatches.forEach(stop=>stop());favoriteWatches.clear();const store=await cloud(user);watchFavorites(store,user,version);}
+export function resetStudySync() {watchVersion++;favoriteWatches.forEach(stop=>stop());favoriteWatches.clear();favoritesLoads.clear();}
 export async function loadFavorites(user) {
   current(user);
   if(!google(user))return favorites(read(favoriteKey(user),[]));
   const key=identity(user);
   if(!favoritesLoads.has(key)) {
-    const loading=(async()=>{
+    const version=watchVersion;const loading=(async()=>{
       const store=await cloud(user);
       const snapshot=await store.getDocFromServer(store.ref);current(user);
       let ids;
@@ -32,7 +38,7 @@ export async function loadFavorites(user) {
         if(latest.exists())return favorites(latest.data().favorites);
         const local=favorites(read(favoriteKey(user),[]));tx.set(store.ref,{favorites:local});return local;
       });
-      current(user);localStorage.setItem(favoriteKey(user),JSON.stringify(ids));return ids;
+      current(user);localStorage.setItem(favoriteKey(user),JSON.stringify(ids));watchFavorites(store,user,version);return ids;
     })();
     favoritesLoads.set(key,loading);loading.catch(()=>{if(favoritesLoads.get(key)===loading)favoritesLoads.delete(key);});
   }

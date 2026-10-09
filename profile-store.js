@@ -5,6 +5,20 @@ const localKey = user => 'protocolum.profile.v1.' + (user.authProvider === 'goog
 const identity = user => `${user.authProvider || 'local'}:${user.firebaseUid || user.email}`;
 const loads = new Map();
 let writeQueue = Promise.resolve();
+let watchVersion=0;const watches=new Map(),profileListeners=new Set();
+export function subscribeProfileUpdates(listener){profileListeners.add(listener);return ()=>profileListeners.delete(listener);}
+function watchProfile(store,user,version){
+  const key=identity(user);if(version!==watchVersion||watches.has(key)||!store.onSnapshot)return;
+  const valid=()=>version===watchVersion&&identity(window.clinicalMindCurrentUser?.()||{})===key;
+  const stop=store.onSnapshot(store.ref,{includeMetadataChanges:true},snapshot=>{
+    if(!valid()||snapshot.metadata?.hasPendingWrites||snapshot.metadata?.fromCache)return;
+    const data=snapshot.data()||{},before=cached(user),profile=normalizeProfile(data);if(snapshot.exists()&&!data.sharing)profile.sharing=before.sharing;
+    const name=typeof data.name==='string'&&data.name.trim()?data.name.trim().slice(0,80):window.clinicalMindCurrentUser().name;
+    const changed=JSON.stringify(before)!==JSON.stringify(profile)||name!==window.clinicalMindCurrentUser().name;
+    loads.set(key,Promise.resolve(profile));localStorage.setItem(localKey(user),JSON.stringify(profile));rememberName(user,name);
+    for(const listener of profileListeners)listener({profile,name,uid:user.firebaseUid,status:'ready',changed});
+  },()=>{if(valid())for(const listener of profileListeners)listener({uid:user.firebaseUid,status:'error'});});watches.set(key,stop);
+}
 
 function current(user) {
   const active = window.clinicalMindCurrentUser?.();
@@ -29,13 +43,14 @@ function rememberName(user, name) {
   current(user);
   window.clinicalMindUpdateProfileName?.(name);
 }
-export function resetProfileSync() { loads.clear(); }
+export async function reconnectProfileUpdates(user){const version=++watchVersion;watches.forEach(stop=>stop());watches.clear();const store=await cloud(user);watchProfile(store,user,version);}
+export function resetProfileSync() { watchVersion++;watches.forEach(stop=>stop());watches.clear();loads.clear(); }
 export async function loadProfile(user) {
   current(user);
   if (user.authProvider !== 'google') return cached(user);
   const id=identity(user);
   if (!loads.has(id)) {
-    const loading=(async()=>{
+    const version=watchVersion;const loading=(async()=>{
       const store=await cloud(user);
       const snapshot=await store.getDocFromServer(store.ref);
       current(user);
@@ -50,7 +65,7 @@ export async function loadProfile(user) {
         current(user);
       }
       localStorage.setItem(localKey(user),JSON.stringify(profile));
-      return profile;
+      watchProfile(store,user,version);return profile;
     })();
     loads.set(id,loading);
     loading.catch(()=>{if(loads.get(id)===loading)loads.delete(id);});
@@ -62,13 +77,14 @@ function enqueue(operation) {
   writeQueue=result.catch(()=>{});
   return result;
 }
-async function persist(user,value,name,sharingOverride){
+async function persist(user,value,name,sharingOverride,base){
   await loadProfile(user);
   const store=await cloud(user),publicRef=store.doc(store.db,'network_profiles',user.firebaseUid);
   const inferred=(await loadProfile(user)).sharing;
   const profile=await store.runTransaction(store.db,async transaction=>{
     const snapshot=await transaction.get(store.ref);current(user);
     const remote=snapshot.data()||{},next=value?normalizeProfile(value):normalizeProfile(remote);
+    if(value&&base){const original=normalizeProfile(base),latest=normalizeProfile(remote);for(const key of Object.keys(next))if(JSON.stringify(next[key])===JSON.stringify(original[key]))next[key]=latest[key];}
     const sharing=normalizeSharing(sharingOverride||remote.sharing||inferred);
     // Read before writing. A withdrawn public profile must never be recreated by a stale editor.
     const published=sharing.published?await transaction.get(publicRef):null;current(user);
@@ -83,11 +99,11 @@ async function persist(user,value,name,sharingOverride){
   current(user);loads.set(identity(user),Promise.resolve(profile));localStorage.setItem(localKey(user),JSON.stringify(profile));
   return profile;
 }
-export function saveProfile(user,value){
+export function saveProfile(user,value,{base}={}){
   const profile=normalizeProfile(value);
   return enqueue(async()=>{
     current(user);
-    if(user.authProvider==='google')return persist(user,profile);
+    if(user.authProvider==='google')return persist(user,profile,null,null,base);
     localStorage.setItem(localKey(user),JSON.stringify(profile));return profile;
   });
 }

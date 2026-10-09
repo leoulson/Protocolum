@@ -1,6 +1,6 @@
 import { startCommunity, stopCommunity } from './community-cloud.js';
-import { loadFavorites, migrateLegacyNotes, resetStudySync } from './study-sync.js';
-import { loadProfile, resetProfileSync } from './profile-store.js';
+import { loadFavorites, migrateLegacyNotes, resetStudySync, reconnectFavoriteUpdates } from './study-sync.js';
+import { loadProfile, resetProfileSync, reconnectProfileUpdates } from './profile-store.js';
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
@@ -83,6 +83,7 @@ window.startGoogleAuth = startSignIn;
 window.googleAuthSignOut = async () => {
   if (auth) await signOut(auth);
 };
+window.addEventListener('online',()=>{const user=window.clinicalMindCurrentUser?.();if(user?.authProvider==='google'){reconnectProfileUpdates(user).catch(()=>{});reconnectFavoriteUpdates(user).catch(()=>{});}});
 async function initializeGoogleAuth() {
   if (!validConfig) {
     showError(text('O login Google aguarda a configuração do Firebase.', 'Google sign-in is awaiting Firebase configuration.'));
@@ -100,6 +101,7 @@ async function initializeGoogleAuth() {
       const revision = ++identityRevision;
       resetProfileSync();
       resetStudySync();
+      document.getElementById('favoriteLiveNotice')?.remove();
       window.protocolumStopNetwork?.();
       stopCommunity();
       if (!user) {

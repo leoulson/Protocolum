@@ -14,7 +14,7 @@ const assert=require('node:assert/strict');
    export const getDocFromServer=async ref=>{const data=await window.readTestDocument(ref);return {exists:()=>data!==null,data:()=>data};};export const getDoc=getDocFromServer;
    export const runTransaction=async(_,callback)=>{const operations=[];const result=await callback({get:getDoc,set:(ref,data,options)=>operations.push({ref,data,options}),delete:ref=>operations.push({ref,remove:true})});await window.commitTestDocuments(operations);return result;};
    export const setDoc=async(ref,data,options)=>window.commitTestDocuments([{ref,data,options}]);
-   export const collection=()=>({});export const query=()=>({});export const where=()=>({});export const orderBy=()=>({});export const startAt=()=>({});export const endAt=()=>({});export const limit=()=>({});export const getDocs=async()=>({docs:[],forEach(){}});export const onSnapshot=(_,callback)=>{callback({docs:[]});return ()=>{};};export const addDoc=()=>{};export const serverTimestamp=()=>0;
+   export const collection=()=>({});export const query=()=>({});export const where=()=>({});export const orderBy=()=>({});export const startAt=()=>({});export const endAt=()=>({});export const limit=()=>({});export const getDocs=async()=>({docs:[],forEach(){}});export const onSnapshot=(ref,...args)=>{if(!ref.collection)args.find(value=>typeof value==='function')({docs:[]});return ()=>{};};export const addDoc=()=>{};export const serverTimestamp=()=>0;
   `}));
   const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.exposeFunction('readTestDocument',ref=>documents.get(ref.collection+'/'+ref.uid)||null);

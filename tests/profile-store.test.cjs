@@ -9,12 +9,12 @@ async function setup({remote, local, readError, writeError, publicProfile}={}) {
   const values=new Map(local?[['protocolum.profile.v1.one@example.com',JSON.stringify(local)]]:[]);
   const writes=[];const documents=new Map(remote?[['uid-one',remote]]:[]);
   const publicDocuments=new Map(publicProfile?[['uid-one',publicProfile]]:[]);
-  let reads=0;
+  let reads=0;const subscriptions=new Set();
   const context=vm.createContext({console,URL,window:{clinicalMindCurrentUser:()=>user,clinicalMindUpdateProfileName:name=>{user={...user,name};}},localStorage:{getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)}});
   const firebase={db:{},auth:{get currentUser(){return user?.authProvider==='google'?{uid:user.firebaseUid}:null;}}};
   const snapshot=ref=>{const data=(ref.collection==='private_profiles'?documents:publicDocuments).get(ref.uid);return {exists:()=>data!==undefined,data:()=>data};};
   const write=(ref,data,options)=>{writes.push({ref,data,options});const target=ref.collection==='private_profiles'?documents:publicDocuments;target.set(ref.uid,options?.merge?{...target.get(ref.uid),...data}:data);};
-  const store={doc:(_,collection,uid)=>({collection,uid}),getDocFromServer:async ref=>{reads++;if(readError)throw Error('offline');return snapshot(ref);},setDoc:async(ref,data,options)=>{if(writeError)throw Error('permission-denied');write(ref,data,options);},runTransaction:async(_,callback)=>{const pending=[];const result=await callback({get:async ref=>{if(readError)throw Error('offline');return snapshot(ref);},set:(...args)=>pending.push({args}),delete:ref=>pending.push({remove:ref})});if(writeError)throw Error('permission-denied');for(const operation of pending){if(operation.remove)publicDocuments.delete(operation.remove.uid);else write(...operation.args);}return result;}};
+  const store={onSnapshot:(ref,options,next,error)=>{const listener={ref,next,error};subscriptions.add(listener);return()=>subscriptions.delete(listener);},doc:(_,collection,uid)=>({collection,uid}),getDocFromServer:async ref=>{reads++;if(readError)throw Error('offline');return snapshot(ref);},setDoc:async(ref,data,options)=>{if(writeError)throw Error('permission-denied');write(ref,data,options);},runTransaction:async(_,callback)=>{const pending=[];const result=await callback({get:async ref=>{if(readError)throw Error('offline');return snapshot(ref);},set:(...args)=>pending.push({args}),delete:ref=>pending.push({remove:ref})});if(writeError)throw Error('permission-denied');for(const operation of pending){if(operation.remove)publicDocuments.delete(operation.remove.uid);else write(...operation.args);}return result;}};
   const modules=new Map();
   async function moduleFor(specifier,ref) {
     const id=specifier.startsWith('https:')?'firestore':specifier.endsWith('auth-google.js')?'auth':path.resolve(ref?path.dirname(ref.identifier):path.join(__dirname,'..'),specifier);
@@ -25,7 +25,7 @@ async function setup({remote, local, readError, writeError, publicProfile}={}) {
     modules.set(id,module);return module;
   }
   const main=await moduleFor('./profile-store.js');await main.link(moduleFor);await main.evaluate();
-  return {api:main.namespace,user:()=>user,setUser:value=>{user=value;},values,writes,documents,publicDocuments,setWriteError:value=>{writeError=value;},reads:()=>reads};
+  return {api:main.namespace,user:()=>user,setUser:value=>{user=value;},values,writes,documents,publicDocuments,subscriptions,push:(value,metadata={})=>{documents.set(user.firebaseUid,value);for(const listener of subscriptions)listener.next({...snapshot(listener.ref),metadata});},setWriteError:value=>{writeError=value;},reads:()=>reads};
 }
 test('migrates browser profile only if remote is absent, saving privately by UID',async()=>{
  const s=await setup({local:{bio:'Existing biography',theme:'violet'}});
@@ -91,4 +91,17 @@ test('academic updates synchronize selected links and publications',async()=>{
  const s=await setup({remote:{name:'One'}});await s.api.saveProfileSharing(s.user(),{published:true,autoUpdate:true,visible:['orcid','articles']});
  const p=await s.api.loadProfile(s.user());await s.api.saveProfile(s.user(),{...p,orcid:'0000-0002-1825-0097',lattes:'1234567890123456',articles:[{doi:'10.1234/paper',title:'New paper',featured:true}]});
  const shared=s.publicDocuments.get('uid-one');assert.equal(shared.orcid,'0000-0002-1825-0097');assert.equal(shared.lattes,'');assert.equal(shared.articles[0].title,'New paper');assert.equal(shared.articles[0].featured,true);
+});
+
+test('live profile updates replace the cache and name without writing',async()=>{
+ const s=await setup({remote:{name:'One',bio:'Old',sharing:{published:false}}});await s.api.loadProfile(s.user());const events=[];s.api.subscribeProfileUpdates(update=>events.push(update));s.push({name:'Remote name',bio:'Remote bio',sharing:{published:false}});assert.equal((await s.api.loadProfile(s.user())).bio,'Remote bio');assert.equal(s.user().name,'Remote name');assert.equal(events.at(-1).changed,true);assert.equal(s.writes.length,0);assert.equal(s.subscriptions.size,1);
+});
+test('cached and pending snapshots cannot overwrite a confirmed profile',async()=>{
+ const s=await setup({remote:{name:'One',bio:'Confirmed',sharing:{published:false}}});await s.api.loadProfile(s.user());s.push({name:'One',bio:'Pending'},{hasPendingWrites:true});s.push({name:'One',bio:'Stale'},{fromCache:true});assert.equal((await s.api.loadProfile(s.user())).bio,'Confirmed');
+});
+test('profile listener reset and reconnect isolate old callbacks',async()=>{
+ const s=await setup({remote:{name:'One',bio:'Original',sharing:{published:false}}});await s.api.loadProfile(s.user());const old=[...s.subscriptions][0];await s.api.reconnectProfileUpdates(s.user());assert.equal(s.subscriptions.size,1);old.next({exists:()=>true,data:()=>({name:'Wrong',bio:'Stale'})});assert.equal(s.user().name,'One');s.api.resetProfileSync();assert.equal(s.subscriptions.size,0);
+});
+test('profile edits merge unchanged fields from a newer remote profile',async()=>{
+ const s=await setup({remote:{name:'One',bio:'Old',city:'Old city',sharing:{published:false}}});const base=await s.api.loadProfile(s.user());s.push({name:'One',bio:'Old',city:'Remote city',sharing:{published:false}});await s.api.saveProfile(s.user(),{...base,bio:'My draft'},{base});assert.equal(s.documents.get('uid-one').city,'Remote city');assert.equal(s.documents.get('uid-one').bio,'My draft');
 });
