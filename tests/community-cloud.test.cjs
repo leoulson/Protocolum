@@ -15,7 +15,7 @@ async function setup({failWrites=false}={}){
  const context=vm.createContext({console,crypto:{randomUUID:()=>`id-${++counter}`},window:{clinicalMindCurrentUser:()=>user}});
  const modules=new Map();
  async function dynamic(specifier){const id=specifier.endsWith('auth-google.js')?'auth':'firestore';if(modules.has(id))return modules.get(id);const exports=id==='auth'?firebase:store;const module=new vm.SyntheticModule(Object.keys(exports),function(){for(const key of Object.keys(exports))this.setExport(key,exports[key]);},{context});modules.set(id,module);await module.link(()=>{});await module.evaluate();return module;}
- const main=new vm.SourceTextModule(fs.readFileSync(path.join(__dirname,'../community-cloud.js'),'utf8'),{context,importModuleDynamically:dynamic});await main.link(()=>{});await main.evaluate();
+ const main=new vm.SourceTextModule(fs.readFileSync(path.join(__dirname,'../community-cloud.js'),'utf8'),{context,importModuleDynamically:dynamic});await main.link(specifier=>new vm.SourceTextModule(fs.readFileSync(path.join(__dirname,'..',specifier),'utf8'),{context}));await main.evaluate();
  return {api:main.namespace,user:()=>user,setUser:value=>user=value,documents,subscriptions,writes,pending,emit,flush:()=>new Promise(resolve=>setImmediate(resolve))};
 }
 const general={kind:'general',title:'Discussion',body:'Academic question',topic:'Cardiologia'};
@@ -56,4 +56,16 @@ test('legacy cloud case posts remain visible through the original server timesta
 });
 test('a pending local publication is hidden until the server acknowledges it',async()=>{
  const s=await setup();await s.api.publishCommunityPost(s.user(),general,'pending-one');s.pending.add('forum_posts/pending-one');await s.api.startCommunity(s.user());await s.flush();assert.equal(s.api.communityState().posts.length,0);s.pending.clear();s.emit();assert.equal(s.api.communityState().posts.length,1);
+});
+
+test('articles are stored and received by another user with canonical links',async()=>{
+ const s=await setup();await s.api.publishCommunityPost(s.user(),{...general,article:{source:'pubmed',identifier:'123456',title:'Study',authors:'Researcher A',url:'javascript:alert(1)'}},'article-post');
+ assert.equal(s.documents.get('forum_posts/article-post').article.url,'https://pubmed.ncbi.nlm.nih.gov/123456/');s.setUser({...s.user(),firebaseUid:'uid-two'});await s.api.startCommunity(s.user());await s.flush();assert.equal(s.api.communityState().posts[0].article.title,'Study');
+});
+test('invalid article metadata is rejected before writing the post',async()=>{
+ const s=await setup();for(const article of [{source:'pubmed',identifier:'bad',title:'Title',authors:''},{source:'crossref',identifier:'10.1234/test',title:'',authors:''},{source:'pubmed',identifier:'123',title:'Title',authors:'a'.repeat(1001)}])await assert.rejects(s.api.publishCommunityPost(s.user(),{...general,article}));assert.equal(s.writes.length,0);
+});
+test('DOI links are canonical and invalid stored attachments do not break legacy posts',async()=>{
+ const s=await setup();await s.api.publishCommunityPost(s.user(),{...clinical,article:{source:'crossref',identifier:'https://doi.org/10.1234/TEST',title:'Paper',authors:'A'}},'doi-post');assert.equal(s.documents.get('forum_posts/doi-post').article.url,'https://doi.org/10.1234/test');
+ s.documents.set('forum_posts/legacy',{...s.documents.get('forum_posts/doi-post'),article:{source:'unknown',url:'javascript:alert(1)'}});await s.api.startCommunity(s.user());await s.flush();assert.equal(s.api.communityState().posts.find(post=>post.id==='legacy').article,null);
 });

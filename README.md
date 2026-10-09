@@ -152,3 +152,13 @@ Os anos usam a data de publicação do PubMed, com limites de 1500 a 3000; o in�
 **Atualizar PubMed** repete a última consulta submetida, incluindo seus filtros; **Limpar busca e filtros** limpa anos, tema e opções e consulta o padrão novamente. A busca direta por PMID abre o registro independentemente dos filtros, com indicação na tela. Favoritos e histórico continuam sendo recuperados, mas registros fora da busca não aparecem nos resultados filtrados.
 
 Os testes de navegador da biblioteca verificam parâmetros enviados ao provedor, validação dos anos, nova tentativa e limpeza. As respostas usadas nesses testes são simuladas.
+
+### Artigos nos posts da comunidade
+
+Os formulários de discussão geral e contribuição clínica têm **Anexar artigo por PMID ou DOI (opcional)**. Informe um número PMID, `PMID: número`, DOI ou URL do PubMed/DOI e clique em **Buscar artigo**. PubMed/NCBI fornece os metadados por PMID; Crossref fornece os de DOI. A prévia preenche título, autores e link original, para revisão antes da publicação. A contribuição clínica também preenche a referência textual quando ela estiver vazia.
+
+Um artigo pode ser anexado a cada post. O anexo é salvo junto ao post no Firestore, ficando disponível a outros usuários autenticados. A busca não altera o título nem o texto da discussão. Alterar o identificador limpa a prévia; enquanto a consulta está pendente, a publicação fica desativada. Identificadores não consultados precisam ser buscados ou apagados antes de publicar. Use **Remover artigo** para desanexar. Falhas de consulta e de publicação preservam o texto; uma falha de publicação também mantém o artigo encontrado. Posts antigos e posts sem anexos continuam disponíveis.
+
+São exibidos até 15 autores, com limite de 1.000 caracteres, e títulos de até 600 caracteres; os metadados pertencem à fonte bibliográfica, não comprovam autoria do participante nem endosso clínico. O identificador é enviado ao provedor de metadados; o texto do post não é enviado nessa consulta. Os links são reconstruídos a partir do PMID/DOI, e os textos são escapados para exibição.
+
+As regras em `firestore.rules` validam o campo opcional `article` de `forum_posts`. Para ativar anexos em produção, publique regras e site com autenticação autorizada: `firebase deploy --only firestore:rules,hosting`. A implantação não foi executada neste ambiente. Testes: `node --experimental-vm-modules --test tests/*.test.cjs` e `NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/community-ui.browser.cjs`; os testes de navegador simulam Firestore, PubMed e Crossref.

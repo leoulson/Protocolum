@@ -1,3 +1,4 @@
+import { normalizeArticle } from './community-article-data.js';
 const listeners = new Set();
 let state = {status:'signed-out',posts:[],replies:{},votes:{}};
 let generation=0, stopPosts, ownerId;
@@ -28,7 +29,7 @@ function post(snapshot) {
   if(!createdAt || !data.userId || typeof data.author!=='string' || !['case','general'].includes(kind))return null;
   if(kind==='case' && ['assessment','plan','reference'].some(key=>typeof data[key]!=='string'))return null;
   if(kind==='general' && ['title','body','topic'].some(key=>typeof data[key]!=='string'))return null;
-  return {...data,id:snapshot.id,kind,createdAt};
+  return {...data,article:normalizeArticle(data.article),id:snapshot.id,kind,createdAt};
 }
 export async function startCommunity(user,{force=false}={}) {
   if(ownerId===user?.firebaseUid && !force && ['loading','ready'].includes(state.status))return;
@@ -69,6 +70,7 @@ export async function publishCommunityPost(user,value,id=crypto.randomUUID()) {
   if(value.kind==='case')Object.assign(data,{assessment:text(value.assessment,10,2400),plan:text(value.plan,10,2400),reference:text(value.reference,3,240)});
   else if(value.kind==='general')Object.assign(data,{title:text(value.title,1,90),body:text(value.body,1,1200),topic:text(value.topic,1,80)});
   else throw new Error('Invalid post type');
+  if(value.article){const article=normalizeArticle(value.article);if(!article)throw new Error('Invalid article');data.article=article;}
   await store.setDoc(store.doc(store.db,'forum_posts',id),data);
   current(user);return id;
 }

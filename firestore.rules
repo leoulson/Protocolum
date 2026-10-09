@@ -4,17 +4,30 @@ service cloud.firestore {
 // Shared community: authenticated readers, posts and replies attributed to their author.
 match /forum_posts/{postId} {
   function signedIn() { return request.auth != null; }
+  function validArticle(a) {
+    return a is map && a.keys().hasOnly(['source','identifier','title','authors','url'])
+      && a.keys().hasAll(['source','identifier','title','authors','url'])
+      && a.title is string && a.title.size() > 0 && a.title.size() <= 600
+      && a.authors is string && a.authors.size() <= 1000
+      && a.identifier is string && a.url is string
+      && ((a.source == 'pubmed' && a.identifier.matches('^[0-9]{1,12}$')
+        && a.url == 'https://pubmed.ncbi.nlm.nih.gov/' + a.identifier + '/')
+      || (a.source == 'crossref' && a.identifier.size() <= 300
+        && a.identifier.matches('^10[.][0-9]{4,9}/[^ <>"?#]+$')
+        && a.url.matches('^https://doi[.]org/.+')));
+  }
   function validPost() {
     let p = request.resource.data;
     return p.userId == request.auth.uid && p.author is string && p.author.size() > 0 && p.author.size() <= 80
+      && (!('article' in p) || validArticle(p.article))
       && p.timestamp == request.time
       && ((p.kind == 'case'
-        && p.keys().hasOnly(['userId','author','kind','timestamp','assessment','plan','reference'])
+        && p.keys().hasOnly(['userId','author','kind','timestamp','assessment','plan','reference','article'])
         && p.assessment is string && p.assessment.size() >= 10 && p.assessment.size() <= 2400
         && p.plan is string && p.plan.size() >= 10 && p.plan.size() <= 2400
         && p.reference is string && p.reference.size() >= 3 && p.reference.size() <= 240)
       || (p.kind == 'general'
-        && p.keys().hasOnly(['userId','author','kind','timestamp','title','body','topic'])
+        && p.keys().hasOnly(['userId','author','kind','timestamp','title','body','topic','article'])
         && p.title is string && p.title.size() > 0 && p.title.size() <= 90
         && p.body is string && p.body.size() > 0 && p.body.size() <= 1200
         && p.topic is string && p.topic.size() > 0 && p.topic.size() <= 80));

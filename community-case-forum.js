@@ -1,3 +1,4 @@
+import { mountArticle, articleCard } from './community-article.js';
 import { communityState, publishCommunityPost, replyToCommunityPost, toggleCommunityVote, startCommunity } from './community-cloud.js';
 import { renderGeneralCommunity } from './community-general.js';
 import { watchCommunity, connectionMessage, renderFeed, localDrafts, releaseBusy } from './community-view.js';
@@ -43,7 +44,7 @@ function renderizarComentario(comment, reactions, replies) {
     <section class="case-post-block"><h4>${esc(t('Avaliação e hipóteses', 'Assessment and hypotheses'))}</h4><p>${esc(comment.assessment)}</p></section>
     <section class="case-post-block"><h4>${esc(t('Plano terapêutico', 'Management plan'))}</h4><p>${esc(comment.plan)}</p></section>
     <div class="case-reference"><span aria-hidden="true">↗</span><div><small>${esc(t('Referência bibliográfica', 'Evidence reference'))}</small><strong>${esc(comment.reference)}</strong></div></div>
-    <footer class="case-votes"><button type="button" ${comment.demo?'disabled':''} data-vote="supported" data-id="${esc(comment.id)}" aria-pressed="${support.includes(currentId)}">${esc(t('Conduta apoiada pela literatura', 'Supported by the literature'))}<span>${support.length}</span></button><button type="button" ${comment.demo?'disabled':''} data-vote="citation" data-id="${esc(comment.id)}" aria-pressed="${citation.includes(currentId)}">${esc(t('Necessita citação', 'Needs a citation'))}<span>${citation.length}</span></button></footer>
+    ${articleCard(comment.article)}<footer class="case-votes"><button type="button" ${comment.demo?'disabled':''} data-vote="supported" data-id="${esc(comment.id)}" aria-pressed="${support.includes(currentId)}">${esc(t('Conduta apoiada pela literatura', 'Supported by the literature'))}<span>${support.length}</span></button><button type="button" ${comment.demo?'disabled':''} data-vote="citation" data-id="${esc(comment.id)}" aria-pressed="${citation.includes(currentId)}">${esc(t('Necessita citação', 'Needs a citation'))}<span>${citation.length}</span></button></footer>
     ${comment.demo?'':`<div class="case-replies">${replies.map(reply=>`<div class="reply">${esc(reply.body)}<small>${esc(reply.author)}</small></div>`).join('')}<form class="reply-form" data-reply="${esc(comment.id)}"><input name="reply" maxlength="500" required placeholder="${esc(t('Escreva uma resposta','Write a reply'))}"><button class="btn" type="submit">${esc(t('Responder','Reply'))}</button></form></div>`}
   </article>`;
 }
@@ -88,7 +89,7 @@ function renderEvidenceCommunity() {
     <p id="caseConnection" role="status" aria-live="polite"></p><button id="caseRetry" type="button" class="btn" hidden>${esc(t('Tentar novamente','Try again'))}</button><footer class="case-local-footer">${esc(t('Posts, respostas e votos são compartilhados com usuários autenticados. Entre com Google para participar.', 'Posts, replies and votes are shared with signed-in users. Sign in with Google to participate.'))}</footer>
   </section>`;
 
-  const form = root.querySelector('#casePostForm');
+  const form = root.querySelector('#casePostForm');const article=mountArticle(form);
   root.querySelector('#openLegacyCommunity').addEventListener('click', () => renderGeneralCommunity());
   root.querySelector('#caseBack').addEventListener('click', () => document.querySelector('[data-section="Diretrizes"]')?.click());
   root.querySelectorAll('[data-case-route]').forEach(button => button.addEventListener('click', () => {
@@ -107,10 +108,10 @@ function renderEvidenceCommunity() {
   const drafts=localDrafts(POSTS_KEY).filter(post=>typeof post.assessment==='string'&&typeof post.plan==='string'&&typeof post.reference==='string');
   if(drafts.length){const select=document.createElement('select');select.setAttribute('aria-label',t('Recuperar contribuição local','Recover local contribution'));select.innerHTML=`<option value="">${esc(t('Recuperar contribuição antiga deste navegador…','Recover an old browser contribution…'))}</option>`+drafts.map((post,i)=>`<option value="${i}">${esc(post.assessment.slice(0,80))}</option>`).join('');form.prepend(select);select.onchange=()=>{const post=drafts[select.value];if(post){for(const field of ['assessment','plan','reference'])form.elements[field].value=post[field];status.textContent=t('Revise e publique para compartilhar.','Review and publish to share.');}};}
   form.addEventListener('submit',async event=>{
-    event.preventDefault();const user=window.clinicalMindCurrentUser?.(),button=form.querySelector('button');button.disabled=true;status.textContent=t('Publicando…','Publishing…');
-    try{await publishCommunityPost(user,{...Object.fromEntries(new FormData(form)),kind:'case'});form.reset();form.querySelectorAll('textarea').forEach(resizeTextarea);status.textContent=t('Conduta publicada na comunidade.','Plan published to the community.');}
+    event.preventDefault();const user=window.clinicalMindCurrentUser?.(),button=form.querySelector('button[type="submit"]');const submitted=Object.fromEntries(new FormData(form));const controls=[...form.querySelectorAll('input,textarea,select,button')].filter(node=>!node.disabled);controls.forEach(node=>node.disabled=true);status.textContent=t('Publicando…','Publishing…');
+    try{await publishCommunityPost(user,{...submitted,kind:'case',article:article.get()});form.reset();article.clear();form.querySelectorAll('textarea').forEach(resizeTextarea);status.textContent=t('Conduta publicada na comunidade.','Plan published to the community.');}
     catch{status.textContent=t('Não foi possível publicar. Entre com Google e verifique a conexão; seu texto foi mantido.','Could not publish. Sign in with Google and check your connection; your text was kept.');}
-    finally{releaseBusy(button,root);}
+    finally{controls.forEach(node=>node.disabled=false);releaseBusy(button,root);}
   });
   const feed=root.querySelector('#caseFeed');
   feed.addEventListener('click',async event=>{
@@ -120,7 +121,7 @@ function renderEvidenceCommunity() {
     finally{releaseBusy(button,root);}
   });
   feed.addEventListener('submit',async event=>{
-    const form=event.target.closest('[data-reply]');if(!form)return;event.preventDefault();const body=form.elements.reply.value,button=form.querySelector('button');button.disabled=true;
+    const form=event.target.closest('[data-reply]');if(!form)return;event.preventDefault();const body=form.elements.reply.value,button=form.querySelector('button[type="submit"]');button.disabled=true;
     try{await replyToCommunityPost(window.clinicalMindCurrentUser?.(),form.dataset.reply,body);const replacement=[...feed.querySelectorAll('[data-reply]')].find(node=>node.dataset.reply===form.dataset.reply);if(replacement?.elements.reply.value===body)replacement.reset();status.textContent=t('Resposta publicada.','Reply published.');}
     catch{status.textContent=t('Não foi possível publicar a resposta. Seu texto foi mantido.','Could not publish the reply. Your text was kept.');}
     finally{releaseBusy(button,root);}
