@@ -142,3 +142,13 @@ Preferências, dados privados e conteúdo público são salvos em uma transaçã
 **Publicação necessária:** as novas regras em `firestore.rules` aceitam e validam o campo privado `sharing`. Publique as regras junto ao site (`firebase deploy --only firestore:rules,hosting`) com autenticação autorizada antes de usar esta versão em produção. O ambiente de desenvolvimento não possui autenticação de implantação; o envio ao GitHub não publica essas regras.
 
 Testes: `node --experimental-vm-modules --test tests/*.test.cjs` e `NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/profile-sharing.browser.cjs`. Os testes de navegador simulam o Firestore; não validam regras ou salvamentos no projeto de produção.
+
+### Filtros online da biblioteca
+
+Em **Busca avançada / Filtros rápidos**, informe ano inicial e/ou final, selecione o tipo de estudo e a disponibilidade de texto completo. **Aplicar filtros**, **Buscar na internet** e Enter fazem uma nova consulta ao PubMed com essas condições. Tipos disponíveis: diretrizes, ensaios randomizados, revisões sistemáticas, meta-análises, estudos observacionais ou todos os tipos. O padrão combina diretrizes, ensaios e revisões. Os filtros de revista e população continuam limitando os registros retornados.
+
+Os anos usam a data de publicação do PubMed, com limites de 1500 a 3000; o início não pode ultrapassar o fim. Sem tema ou intervalo explícito, a busca usa a janela recente existente (cinco anos para diretrizes e um ano para os demais tipos). A consulta tem limite de até 80 registros. **Texto completo disponível** usa a classificação do PubMed e pode exigir assinatura; **Texto completo gratuito** usa o subconjunto gratuito. Nenhum desses filtros promete acesso ao artigo nem altera o conteúdo do resumo.
+
+**Atualizar PubMed** repete a última consulta submetida, incluindo seus filtros; **Limpar busca e filtros** limpa anos, tema e opções e consulta o padrão novamente. A busca direta por PMID abre o registro independentemente dos filtros, com indicação na tela. Favoritos e histórico continuam sendo recuperados, mas registros fora da busca não aparecem nos resultados filtrados.
+
+Os testes de navegador da biblioteca verificam parâmetros enviados ao provedor, validação dos anos, nova tentativa e limpeza. As respostas usadas nesses testes são simuladas.

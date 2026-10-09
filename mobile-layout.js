@@ -16,5 +16,6 @@ const advanced=document.getElementById('advanced');
 if(advanced)advanced.onclick=()=>{
   const app=document.getElementById('app');
   if(!app.classList.contains('drawer-open'))document.getElementById('sidebarToggle')?.click();
-  document.getElementById('cid')?.focus();
+  document.getElementById('pubmedYearFrom')?.focus();
+  document.querySelector('.filters')?.scrollIntoView({behavior:'smooth',block:'start'});
 };

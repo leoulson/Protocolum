@@ -6,6 +6,12 @@ const text=(pt,en)=>english()?en:pt;
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let busy=false,lastChecked=0,lastQuery='',lastRequest=0,favoritesPending=false;
 const favoriteLookups=new Set();
+let lastFilters={yearFrom:'',yearTo:'',studyType:'recent',fullText:'any'};
+const STUDY_TYPES={guideline:'("Practice Guideline"[Publication Type] OR "Guideline"[Publication Type])',trial:'"Randomized Controlled Trial"[Publication Type]',systematic:'"Systematic Review"[Publication Type]',meta:'"Meta-Analysis"[Publication Type]',observational:'"Observational Study"[Publication Type]'};
+const readFilters=()=>({yearFrom:byId('pubmedYearFrom')?.value||'',yearTo:byId('pubmedYearTo')?.value||'',studyType:byId('pubmedStudyType')?.value||'recent',fullText:byId('pubmedFullText')?.value||'any'});
+const searchControls=()=>['refreshLibrary','searchOnlineLibrary','applyFilters','pubmedYearFrom','pubmedYearTo','pubmedStudyType','pubmedFullText'].map(byId).filter(Boolean);
+function validateFilters(filters){for(const value of [filters.yearFrom,filters.yearTo])if(value&&(!/^\d{4}$/.test(value)||Number(value)<1500||Number(value)>3000))throw Error(text('Informe anos inteiros entre 1500 e 3000.','Enter whole years between 1500 and 3000.'));if(filters.yearFrom&&filters.yearTo&&Number(filters.yearFrom)>Number(filters.yearTo))throw Error(text('O ano inicial deve ser menor ou igual ao ano final.','The starting year must be no later than the ending year.'));}
+
 export function parseArticles(xml,checkedAt=Date.now()) {
   const document=new DOMParser().parseFromString(xml,'application/xml');
   if(document.querySelector('parsererror')||document.querySelector('ERROR'))throw new Error('Invalid PubMed response');
@@ -51,33 +57,44 @@ async function fetchResponse(endpoint,parameters,format){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
   try{const response=await fetch(API+endpoint+'?'+new URLSearchParams(parameters),{signal:controller.signal,headers:{Accept:format==='xml'?'application/xml':'application/json'}});if(!response.ok)throw new Error('PubMed HTTP '+response.status);return await (format==='xml'?response.text():response.json());}finally{clearTimeout(timer);}
 }
-async function search(term,type){
-  const filter=type==='guideline'?'("Practice Guideline"[Publication Type] OR "Guideline"[Publication Type])':'("Randomized Controlled Trial"[Publication Type] OR "Systematic Review"[Publication Type])';
-  const parameters={db:'pubmed',term:`(${term||TOPICS}) AND ${filter}`,retmode:'json',retmax:'40',sort:'date'};
-  if(!term)Object.assign(parameters,{reldate:type==='guideline'?'1825':'365',datetype:'pdat'});
-  const response=await fetchResponse('esearch.fcgi',parameters,'json');if(response.error||!Array.isArray(response.esearchresult?.idlist))throw new Error('Invalid PubMed search response');return response.esearchresult.idlist.filter(id=>/^\d+$/.test(id));
+export function searchParameters(term,type,filters){
+  validateFilters(filters);
+  const kind=filters.studyType==='recent'?type:filters.studyType;
+  const filter=kind==='research'?'("Randomized Controlled Trial"[Publication Type] OR "Systematic Review"[Publication Type])':STUDY_TYPES[kind];
+  const terms=[`(${term||TOPICS})`];if(filter)terms.push(filter);
+  if(filters.yearFrom||filters.yearTo)terms.push(`("${filters.yearFrom||'1500'}/01/01"[Date - Publication] : "${filters.yearTo||'3000'}/12/31"[Date - Publication])`);
+  if(filters.fullText==='full')terms.push('full text[sb]');else if(filters.fullText==='free')terms.push('free full text[sb]');
+  const parameters={db:'pubmed',term:terms.join(' AND '),retmode:'json',retmax:filters.studyType==='recent'?'40':'80',sort:'date'};
+  if(!term&&!filters.yearFrom&&!filters.yearTo)Object.assign(parameters,{reldate:kind==='guideline'?'1825':'365',datetype:'pdat'});
+  return parameters;
 }
+async function search(term,type,filters){
+  const response=await fetchResponse('esearch.fcgi',searchParameters(term,type,filters),'json');if(response.error||!Array.isArray(response.esearchresult?.idlist))throw new Error('Invalid PubMed search response');return response.esearchresult.idlist.filter(id=>/^\d+$/.test(id));
+}
+
 function savedIds(){
   const user=window.clinicalMindCurrentUser?.();if(!user)return[];
   const read=key=>{try{const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value:[];}catch{return[];}};
   const ids=[...read('clinicalmind.favorites.'+user.email),...read('clinicalmind.history.'+user.email).map(entry=>entry?.id)];
   return [...new Set(ids.filter(id=>typeof id==='string'&&/^pubmed-\d+$/.test(id)).map(id=>id.slice(7)))];
 }
-export async function syncLibrary(term='') {
-  if(busy)return;busy=true;term=String(term).trim().slice(0,200);lastQuery=term;favoriteLookups.clear();
-  const buttons=[byId('refreshLibrary'),byId('searchOnlineLibrary')].filter(Boolean);buttons.forEach(button=>button.disabled=true);
+export async function syncLibrary(term='',filters=readFilters()) {
+  if(busy)return;term=String(term).trim().slice(0,200);try{if(!/^(?:pubmed-)?\d{1,12}$/.test(term))validateFilters(filters);}catch(error){status(error.message,'error');return;}lastFilters={...filters};busy=true;lastQuery=term;favoriteLookups.clear();
+  const buttons=searchControls();buttons.forEach(button=>button.disabled=true);
   status(text('Consultando diretrizes e artigos no PubMed/NCBI…','Fetching guidelines and articles from PubMed/NCBI…'),'loading');
   try{
     const pmid=term.match(/^(?:pubmed-)?(\d{1,12})$/)?.[1];
-    const guidelines=pmid?[pmid]:await search(term,'guideline'),articles=pmid?[]:await search(term,'research'),ids=[...new Set([...guidelines,...articles,...savedIds()])];
+    const guidelines=pmid?[pmid]:await search(term,'guideline',filters),articles=pmid||filters.studyType!=='recent'?[]:await search(term,'research',filters),ids=[...new Set([...guidelines,...articles,...savedIds()])];
     savedIds().forEach(id=>favoriteLookups.add(id));
     const records=[],checkedAt=Date.now();
     for(let i=0;i<ids.length;i+=100){const xml=await fetchResponse('efetch.fcgi',{db:'pubmed',id:ids.slice(i,i+100).join(','),retmode:'xml'},'xml');records.push(...parseArticles(xml,checkedAt));}
     const primaryIds=new Set([...guidelines,...articles]);
     const unique=[...new Map(records.map(record=>[record.id,{...record,lookupOnly:!primaryIds.has(record.pmid)}])).values()];lastChecked=checkedAt;lastQuery=term;apply(unique,term);
+    if(!pmid&&!['recent','guideline'].includes(filters.studyType)&&['Início','Diretrizes'].includes(document.querySelector('.nav-btn.active')?.dataset.section))document.querySelector('#nav [data-section="Literatura"]')?.click();
     if(pmid&&['Início','Diretrizes','Literatura','Alertas','Referências'].includes(document.querySelector('.nav-btn.active')?.dataset.section))document.querySelector('#nav [data-section="Literatura"]')?.click();
+    if(byId('app')?.classList.contains('drawer-open'))byId('sidebarToggle')?.click();
     const fetched=new Intl.DateTimeFormat(english()?'en-US':'pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(lastChecked));
-    status(text(`PubMed online: ${unique.filter(record=>!record.lookupOnly).length} registros · consultado em ${fetched}.`,`PubMed online: ${unique.filter(record=>!record.lookupOnly).length} records · retrieved ${fetched}.`));
+    status(text(`PubMed online: ${unique.filter(record=>!record.lookupOnly).length} registros · consultado em ${fetched}.`,`PubMed online: ${unique.filter(record=>!record.lookupOnly).length} records · retrieved ${fetched}.`)+(pmid?text(' Consulta direta por PMID; filtros não aplicados.',' Direct PMID lookup; filters not applied.'):text(' Filtros aplicados na consulta.',' Filters applied to the request.')));
   }catch(error){status(text('Falha ao consultar o PubMed. Clique em Atualizar PubMed para tentar novamente.','Could not fetch PubMed. Click Refresh PubMed to try again.')+(lastChecked?text(' Os resultados da última consulta online foram mantidos.',' Results from the last online request were kept.'):'') ,'error');refreshView();console.warn('Protocolum online library:',error.message);}
   finally{busy=false;buttons.forEach(button=>button.disabled=false);if(favoritesPending){favoritesPending=false;recoverFavorites();}}
 }
@@ -85,11 +102,11 @@ async function recoverFavorites(){
   if(busy){favoritesPending=true;return;}
   const library=window.clinicalMindLibrary;if(!Array.isArray(library))return;
   const ids=savedIds().filter(id=>!library.some(record=>record.pmid===id)&&!favoriteLookups.has(id));if(!ids.length)return;
-  ids.forEach(id=>favoriteLookups.add(id));busy=true;const buttons=[byId('refreshLibrary'),byId('searchOnlineLibrary')].filter(Boolean);buttons.forEach(button=>button.disabled=true);
+  ids.forEach(id=>favoriteLookups.add(id));busy=true;const buttons=searchControls();buttons.forEach(button=>button.disabled=true);
   try{const records=[];for(let i=0;i<ids.length;i+=100){const xml=await fetchResponse('efetch.fcgi',{db:'pubmed',id:ids.slice(i,i+100).join(','),retmode:'xml'},'xml');records.push(...parseArticles(xml).map(record=>({...record,lookupOnly:true})));}apply([...new Map([...library,...records].map(record=>[record.id,record])).values()],window.clinicalMindOnlineQuery||'');}
   catch{status(text('Não foi possível consultar os favoritos no PubMed. Use Atualizar PubMed para tentar novamente.','Could not retrieve favorites from PubMed. Use Refresh PubMed to try again.'),'error');}
   finally{busy=false;buttons.forEach(button=>button.disabled=false);if(favoritesPending){favoritesPending=false;recoverFavorites();}}
 }
 window.addEventListener('protocolum-favorites-updated',()=>recoverFavorites());
-function init(){const app=byId('app');let started=false;byId('refreshLibrary')?.addEventListener('click',()=>syncLibrary(lastQuery));byId('searchOnlineLibrary')?.addEventListener('click',()=>syncLibrary(byId('search')?.value||''));byId('search')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();syncLibrary(event.target.value);}});const start=()=>{if(started||!app||app.hidden)return;started=true;syncLibrary();};start();if(app&&!started){const observer=new MutationObserver(()=>{start();if(started)observer.disconnect();});observer.observe(app,{attributes:true,attributeFilter:['hidden']});}document.addEventListener('visibilitychange',()=>{if(started&&!document.hidden&&Date.now()-lastChecked>6*60*60*1000)syncLibrary(lastQuery);});}
+function init(){byId('applyFilters').onclick=()=>syncLibrary(byId('search')?.value||'');byId('showAll')?.addEventListener('click',()=>{byId('pubmedYearFrom').value='';byId('pubmedYearTo').value='';byId('pubmedStudyType').value='recent';byId('pubmedFullText').value='any';syncLibrary('');});const app=byId('app');let started=false;byId('refreshLibrary')?.addEventListener('click',()=>syncLibrary(lastQuery,lastFilters));byId('searchOnlineLibrary')?.addEventListener('click',()=>syncLibrary(byId('search')?.value||''));byId('search')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();syncLibrary(event.target.value);}});const start=()=>{if(started||!app||app.hidden)return;started=true;syncLibrary();};start();if(app&&!started){const observer=new MutationObserver(()=>{start();if(started)observer.disconnect();});observer.observe(app,{attributes:true,attributeFilter:['hidden']});}document.addEventListener('visibilitychange',()=>{if(started&&!document.hidden&&Date.now()-lastChecked>6*60*60*1000)syncLibrary(lastQuery,lastFilters);});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
