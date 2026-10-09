@@ -1,6 +1,6 @@
 import { mountArticle, articleCard } from './community-article.js';
 import { communityState, publishCommunityPost, replyToCommunityPost, toggleCommunityVote, startCommunity } from './community-cloud.js';
-import { user, escape as esc, text as t, watchCommunity, connectionMessage, renderFeed, localDrafts, releaseBusy } from './community-view.js';
+import { user, escape as esc, text as t, watchCommunity, connectionMessage, renderFeed, localDrafts, releaseBusy, mountCommunityPagination, renderCommunityPagination } from './community-view.js';
 export function renderGeneralCommunity(){
  const root=document.getElementById('recommendations');if(!root)return;
  root.classList.remove('list');root.classList.add('community');
@@ -16,7 +16,7 @@ export function renderGeneralCommunity(){
   catch{status.textContent=t('Não foi possível publicar. Entre com Google e verifique a conexão; seu texto foi mantido.','Could not publish. Sign in with Google and check your connection; your text was kept.');}
   finally{controls.forEach(node=>node.disabled=false);releaseBusy(button,root);}
  };
- const feed=root.querySelector('#communityPosts');
+ const feed=root.querySelector('#communityPosts');mountCommunityPagination(root.querySelector('.shared-general-community'));
  feed.onclick=async event=>{const button=event.target.closest('[data-like]');if(!button)return;button.disabled=true;try{await toggleCommunityVote(user(),button.dataset.like,'like');}catch{status.textContent=t('Não foi possível salvar o apoio. Entre com Google e tente novamente.','Could not save support. Sign in with Google and try again.');}finally{releaseBusy(button,root);}};
  feed.onsubmit=async event=>{
   const form=event.target.closest('[data-reply]');if(!form)return;event.preventDefault();const input=form.elements.reply,body=input.value,button=form.querySelector('button[type="submit"]');button.disabled=true;
@@ -27,12 +27,13 @@ export function renderGeneralCommunity(){
  watchCommunity(state=>{
   if(!root.querySelector('.shared-general-community'))return;
   root.querySelector('#communityConnection').textContent=connectionMessage(state);root.querySelector('#retryCommunity').hidden=state.status!=='error';
+  renderCommunityPagination(root,state);
   const posts=state.posts.filter(post=>post.kind==='general');
-  document.getElementById('resultCount').textContent=t(`${posts.length} discussões · compartilhadas`,`${posts.length} shared discussions`);
+  document.getElementById('resultCount').textContent=t(`${posts.length} discussões carregadas`,`${posts.length} loaded discussions`);
   renderFeed(feed,posts.length?posts.map(post=>{
    const replies=state.replies[post.id]||[],votes=state.votes[post.id]||[];
    return `<article class="community-card" data-post-id="${esc(post.id)}"><h3>${esc(post.title)}</h3><div class="meta">${esc(post.topic)} · ${esc(post.author)} · ${esc(new Date(post.createdAt).toLocaleString())}</div><div class="postbody">${esc(post.body)}</div>${articleCard(post.article)}<div class="community-actions"><button type="button" data-like="${esc(post.id)}" aria-pressed="${votes.some(v=>v.id===user()?.firebaseUid&&v.like)}">♡ ${votes.filter(v=>v.like).length} ${t('apoio','support')}</button><span>${replies.length} ${t('respostas','replies')}</span></div>${replies.map(reply=>`<div class="reply">${esc(reply.body)}<small>${esc(reply.author)} · ${esc(new Date(reply.createdAt).toLocaleString())}</small></div>`).join('')}<form class="reply-form" data-reply="${esc(post.id)}"><input name="reply" maxlength="500" required placeholder="${t('Escreva uma resposta','Write a reply')}"><button class="btn" type="submit">${t('Responder','Reply')}</button></form></article>`;
-  }).join(''):`<div class="empty">${t('Ainda não há discussões compartilhadas.','No shared discussions yet.')}</div>`);
+  }).join(''):`<div class="empty">${state.hasMore?t('Nenhuma discussão neste trecho. Carregue mais posts para continuar.','No discussions in this batch. Load more posts to continue.'):t('Ainda não há discussões compartilhadas.','No shared discussions yet.')}</div>`);
  });
 }
 window.renderSharedGeneralCommunity=renderGeneralCommunity;

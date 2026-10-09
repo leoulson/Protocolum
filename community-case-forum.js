@@ -1,7 +1,7 @@
 import { mountArticle, articleCard } from './community-article.js';
 import { communityState, publishCommunityPost, replyToCommunityPost, toggleCommunityVote, startCommunity } from './community-cloud.js';
 import { renderGeneralCommunity } from './community-general.js';
-import { watchCommunity, connectionMessage, renderFeed, localDrafts, releaseBusy } from './community-view.js';
+import { watchCommunity, connectionMessage, renderFeed, localDrafts, releaseBusy, mountCommunityPagination, renderCommunityPagination } from './community-view.js';
 // Shared clinical discussion; sample posts are never published to Firestore.
 const POSTS_KEY = 'clinicalmind.community.case-posts.v1';
 const isEnglish = () => document.documentElement.lang.toLowerCase().startsWith('en');
@@ -54,7 +54,7 @@ function renderizarFeed(root) {
   const state=communityState();
   const comments = [...state.posts.filter(post=>post.kind==='case'), ...examplePosts].sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt));
   renderFeed(feed,comments.map(comment=>renderizarComentario(comment,state.votes[comment.id]||[],state.replies[comment.id]||[])).join(''));
-  root.querySelector('#casePostCount').textContent = t(`${comments.length} contribuições`, `${comments.length} contributions`);
+  root.querySelector('#casePostCount').textContent = t(`${comments.length-examplePosts.length} contribuições carregadas · ${examplePosts.length} exemplos`, `${comments.length-examplePosts.length} loaded contributions · ${examplePosts.length} examples`);
 }
 
 function renderEvidenceCommunity() {
@@ -113,7 +113,7 @@ function renderEvidenceCommunity() {
     catch{status.textContent=t('Não foi possível publicar. Entre com Google e verifique a conexão; seu texto foi mantido.','Could not publish. Sign in with Google and check your connection; your text was kept.');}
     finally{controls.forEach(node=>node.disabled=false);releaseBusy(button,root);}
   });
-  const feed=root.querySelector('#caseFeed');
+  const feed=root.querySelector('#caseFeed');mountCommunityPagination(root.querySelector('.case-discussion'));
   feed.addEventListener('click',async event=>{
     const button=event.target.closest('[data-vote]');if(!button||button.disabled)return;button.disabled=true;
     try{await toggleCommunityVote(window.clinicalMindCurrentUser?.(),button.dataset.id,button.dataset.vote);}
@@ -127,7 +127,7 @@ function renderEvidenceCommunity() {
     finally{releaseBusy(button,root);}
   });
   root.querySelector('#caseRetry').onclick=()=>startCommunity(window.clinicalMindCurrentUser?.(),{force:true});
-  watchCommunity(state=>{if(!root.querySelector('.case-forum'))return;root.querySelector('#caseConnection').textContent=connectionMessage(state);root.querySelector('#caseRetry').hidden=state.status!=='error';renderizarFeed(root);});
+  watchCommunity(state=>{if(!root.querySelector('.case-forum'))return;root.querySelector('#caseConnection').textContent=connectionMessage(state);root.querySelector('#caseRetry').hidden=state.status!=='error';renderizarFeed(root);renderCommunityPagination(root,state);});
 
   renderizarFeed(root);
 }

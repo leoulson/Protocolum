@@ -1,4 +1,4 @@
-import { subscribeCommunity, startCommunity } from './community-cloud.js';
+import { subscribeCommunity, startCommunity, loadMoreCommunity } from './community-cloud.js';
 let stop;
 export const user=()=>window.clinicalMindCurrentUser?.();
 export const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -20,4 +20,14 @@ export function releaseBusy(button,container){
   button.disabled=false;
   const reply=button.closest('[data-reply]')?.dataset.reply;
   for(const replacement of container.querySelectorAll('button'))if((reply&&replacement.closest('[data-reply]')?.dataset.reply===reply)||(button.dataset.id&&replacement.dataset.id===button.dataset.id&&replacement.dataset.vote===button.dataset.vote)||(button.dataset.like&&replacement.dataset.like===button.dataset.like))replacement.disabled=false;
+}
+
+export function mountCommunityPagination(container){
+ const footer=document.createElement('div');footer.className='community-pagination';footer.innerHTML=`<button class="btn" type="button" data-community-more hidden>${text('Carregar mais posts','Load more posts')}</button><p data-community-page-status role="status" aria-live="polite"></p>`;container.append(footer);
+ footer.querySelector('button').onclick=()=>loadMoreCommunity(user()).catch(()=>{footer.querySelector('p').textContent=text('Entre com Google para carregar os posts.','Sign in with Google to load posts.');});
+}
+export function renderCommunityPagination(container,state){
+ const button=container.querySelector('[data-community-more]'),status=container.querySelector('[data-community-page-status]');if(!button)return;
+ button.hidden=!state.hasMore;button.disabled=state.loadingMore||state.status==='loading';button.textContent=state.loadingMore?text('Carregando posts…','Loading posts…'):state.pageError?text('Tentar carregar mais novamente','Retry loading more'):text('Carregar mais posts','Load more posts');
+ status.textContent=state.pageError?text('Não foi possível carregar mais posts. Os posts já carregados foram mantidos.','Could not load more posts. Previously loaded posts were kept.'):state.loadingMore?text('Buscando posts mais antigos…','Fetching older posts…'):!state.hasMore&&state.status==='ready'?text('Todos os posts disponíveis foram carregados.','All available posts have been loaded.'):'';
 }

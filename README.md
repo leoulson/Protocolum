@@ -172,3 +172,11 @@ Quando o perfil tiver edições pendentes, uma atualização remota mantém o fo
 Snapshots locais em cache e escritas ainda não confirmadas não substituem os dados confirmados. Cada conta mantém uma assinatura de perfil e uma de favoritos, que são encerradas ao sair ou trocar de conta. Falhas oferecem **Reconectar**, preservando edições; o evento de retorno da conexão também recria as assinaturas. O Firestore já retenta interrupções transitórias de rede. Estas assinaturas usam as permissões privadas existentes, sem tornar os documentos públicos.
 
 Validação: `node --experimental-vm-modules --test tests/*.test.cjs` e `NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/live-sync.browser.cjs`. O teste abre dois dispositivos simulados da mesma conta, verifica atualizações de perfil/nome/favoritos, preservação de rascunho, reconexão e encerramento de assinaturas. Firestore e PubMed são simulados; não comprova o funcionamento no projeto de produção.
+
+### Paginação da comunidade
+
+A comunidade busca inicialmente os 20 posts mais recentes e oferece **Carregar mais posts** para buscar os próximos 20. As discussões gerais e os casos clínicos compartilham as páginas carregadas; cada tela mostra os posts do seu tipo. Os exemplos de casos não entram na paginação.
+
+A primeira página continua recebendo atualizações em tempo real. Posts antigos já carregados também recebem alterações e exclusões, assim como suas respostas e votos. Os cursores do Firestore evitam repetir posts com a mesma data. Se uma página falhar, os posts e rascunhos de resposta permanecem na tela e o botão permite tentar novamente. Ao sair da conta, os dados e as assinaturas dessa sessão são limpos.
+
+As consultas usam o limite de 20, compatível com as regras existentes. Os testes automatizados de paginação e de interface usam Firestore simulado; a validação no projeto Firebase depende de um ambiente autenticado.
