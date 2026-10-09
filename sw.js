@@ -1,4 +1,4 @@
-const CACHE = 'protocolum-shell-v40';
+const CACHE = 'protocolum-shell-v41';
 const CORE = ['./','./index.html','./app-shell.css','./mobile-layout.css','./mobile-layout.js','./liquid-glass.css','./auth-google.js','./cloud-sync.js','./profile-ui.js','./profile-data.js','./profile-store.js','./study-sync.js','./profile-ui.css','./profile-academic.js','./friends-network.js','./firebase-config.js','./community-case-forum.js','./community-cloud.js','./community-general.js','./community-view.js','./hf-decision-flow.js','./pubmed-lab.js','./library-auto-update.js','./reader-architecture.js','./guideline-comparison.js','./guideline-comparison-data.js','./guideline-comparison.css','./privacidade.html','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())); });

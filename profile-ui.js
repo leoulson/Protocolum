@@ -59,7 +59,7 @@ async function enhanceProfile(target) {
     const matches = profile.friends.filter(f => `${f.name} ${f.email} ${f.specialty}`.toLocaleLowerCase().includes(query));
     section.dispatchEvent(new Event('profile-updated'));
     get('friendsCount').textContent = `(${profile.friends.length})`;
-    get('friendList').innerHTML = matches.length ? matches.map(f => `<li><div><strong>${escape(f.name)}</strong><span>${escape(f.specialty)}</span><a href="mailto:${escape(f.email)}">${escape(f.email)}</a></div><div class="profile-friend-actions"><button type="button" class="btn" data-edit="${escape(f.id)}">${text('Editar','Edit')}</button><button type="button" class="btn" data-remove="${escape(f.id)}">${text('Remover','Remove')}</button></div></li>`).join('') : `<li>${query ? text('Nenhum amigo encontrado.','No friends found.') : text('Sua lista está vazia. Adicione um colega para começar.','Your list is empty. Add a colleague to get started.')}</li>`;
+    get('friendList').innerHTML = matches.length ? matches.map(f => `<li><div><strong>${escape(f.name)}</strong><span>${escape(f.specialty)}</span><a href="mailto:${escape(f.email)}">${escape(f.email)}</a></div><div class="profile-friend-actions"><button type="button" class="btn" data-find-profile="${escape(f.id)}">${text('Buscar perfil','Find profile')}</button><button type="button" class="btn" data-edit="${escape(f.id)}">${text('Editar','Edit')}</button><button type="button" class="btn" data-remove="${escape(f.id)}">${text('Remover','Remove')}</button></div></li>`).join('') : `<li>${query ? text('Nenhum amigo encontrado.','No friends found.') : text('Sua lista está vazia. Adicione um colega para começar.','Your list is empty. Add a colleague to get started.')}</li>`;
   };
   const reset = () => { editing=null;get('friendForm').reset();get('friendCancel').hidden=true;get('friendSave').textContent=text('Adicionar amigo','Add friend'); };
   get('friendName').required=true;get('friendEmail').required=true;
@@ -81,6 +81,8 @@ async function enhanceProfile(target) {
   };
   get('friendCancel').onclick=reset;get('friendSearch').oninput=renderFriends;
   get('friendList').onclick = async event => {
+    const find=event.target.closest('[data-find-profile]');
+    if(find){const friend=profile.friends.find(f=>f.id===find.dataset.findProfile);if(friend){get('friendStatus').textContent=text('Escolha o perfil publicado do colega na rede acadêmica. É necessário entrar com Google.','Choose the colleague’s published profile in the academic network. Google sign-in is required.');section.dispatchEvent(new CustomEvent('find-contact-profile',{detail:{name:friend.name}}));}return;}
     const edit=event.target.closest('[data-edit]'), remove=event.target.closest('[data-remove]');
     if(edit){const f=profile.friends.find(f=>f.id===edit.dataset.edit);if(!f)return;editing=f.id;get('friendName').value=f.name;get('friendEmail').value=f.email;get('friendSpecialty').value=f.specialty;get('friendSave').textContent=text('Salvar amigo','Save friend');get('friendCancel').hidden=false;get('friendName').focus();}
     if(remove){const next={...profile,friends:profile.friends.filter(f=>f.id!==remove.dataset.remove)};await save(next,get('friendStatus'),()=>{if(editing===remove.dataset.remove)reset();renderFriends();});}

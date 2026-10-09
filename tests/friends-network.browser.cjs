@@ -1,0 +1,30 @@
+const {chromium,expect}=require('@playwright/test');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+ const context=await browser.newContext({serviceWorkers:'block'});
+ let mode='ready',resolveRead;const reads=[];
+ const profile={uid:'friend',name:'Ana <img src=x onerror=alert(1)>',bio:'Bio compartilhada',role:'Médica',specialty:'Cardiologia',institution:'Universidade',city:'São Paulo',orcid:'0000-0002-1825-0097',lattes:'1234567890123456',theme:'violet',email:'private@example.com',friends:[{name:'Private contact'}],articles:[{doi:'10.1234/ordinary',title:'Artigo comum'},{doi:'10.1234/featured',title:'Artigo em destaque',authors:'Ana',journal:'Revista',year:'2026',featured:true}]};
+ await context.route('**/auth-google.js',route=>route.fulfill({contentType:'text/javascript',body:"export const db={};export const auth={currentUser:{uid:'me'}};"}));
+ await context.route('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js',route=>route.fulfill({contentType:'text/javascript',body:`
+ export const doc=(_,collection,uid)=>({collection,uid});
+ export const getDoc=async ref=>{const result=await window.testReadProfile(ref);return {exists:()=>result!==null,data:()=>result};};
+ export const collection=(_,name)=>({name});export const query=(...args)=>args;export const where=()=>({});export const orderBy=()=>({});export const startAt=()=>({});export const endAt=()=>({});export const limit=()=>({});
+ export const getDocs=async()=>({docs:[{data:()=>(${JSON.stringify(profile)})}]});
+ export const onSnapshot=(_,callback)=>{callback({docs:[{id:'friend~me',data:()=>({members:['friend','me'],status:'accepted',sender:'friend',recipient:'me'})}]});return ()=>{};};
+ export const setDoc=async()=>{};export const deleteDoc=async()=>{};export const runTransaction=async()=>{};
+ `}));
+ const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.exposeFunction('testReadProfile',async ref=>{reads.push(ref);assert.equal(ref.collection,'network_profiles');if(mode==='error')throw Error('offline');if(mode==='missing')return null;if(mode==='held')await new Promise(resolve=>resolveRead=resolve);return profile;});
+ await page.goto('http://127.0.0.1:8080/privacidade.html');
+ await page.evaluate(async()=>{document.body.innerHTML='<section id="testProfile"><section class="profile-friends"><h3>Contatos</h3></section></section>';const css=document.createElement('link');css.rel='stylesheet';css.href='/profile-ui.css';document.head.append(css);const {mountNetwork}=await import('/friends-network.js');await mountNetwork(document.querySelector('#testProfile'),{firebaseUid:'me'},()=>({}));});
+ const view=page.locator('#networkFriends [data-view-user]'),dialog=page.locator('.friend-profile-dialog');
+ await expect(view).toBeVisible();await view.click();await expect(dialog).toBeVisible();await expect(dialog.locator('#friendProfileTitle')).toHaveText(profile.name);await expect(dialog.locator('.academic-bio')).toHaveText(profile.bio);await expect(dialog.locator('.academic-identity')).toContainText('Universidade');await expect(dialog.locator('.academic-paper').first()).toContainText('Artigo em destaque');await expect(dialog.locator('a', {hasText:'ORCID'})).toHaveAttribute('href','https://orcid.org/0000-0002-1825-0097');assert.equal(await dialog.locator('img,input,textarea').count(),0);assert.ok(!(await dialog.textContent()).includes('private@example.com'));assert.ok(!(await dialog.textContent()).includes('Private contact'));
+ await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();await expect(view).toBeFocused();
+ mode='missing';await view.click();await expect(dialog).toContainText('ainda não publicou');await expect(dialog).not.toContainText('Bio compartilhada');await dialog.locator('[data-close-profile]').click();
+ mode='error';await view.click();await expect(dialog).toContainText('Não foi possível carregar');mode='ready';await dialog.locator('[data-retry-profile]').click();await expect(dialog.locator('#friendProfileTitle')).toHaveText(profile.name);await dialog.locator('[data-close-profile]').click();
+ await page.evaluate(()=>document.querySelector('#testProfile').dispatchEvent(new CustomEvent('find-contact-profile',{detail:{name:'Ana'}})));await expect(page.locator('#networkSearch')).toHaveValue('Ana');await expect(page.locator('#networkResults [data-view-user]')).toBeVisible();
+ mode='held';await view.click();await expect(dialog).toContainText('Carregando perfil');await expect.poll(()=>Boolean(resolveRead)).toBe(true);await dialog.locator('[data-close-profile]').click();resolveRead();await expect(dialog).not.toBeVisible();await expect(dialog.locator('#friendProfileContent')).toBeEmpty();
+ mode='ready';await view.click();await expect(dialog.locator('#friendProfileTitle')).toHaveText(profile.name);await page.evaluate(()=>window.protocolumStopNetwork());assert.equal(await page.locator('.friend-profile-dialog').count(),0);assert.deepEqual(errors,[]);assert.ok(reads.length>=7);
+ console.log('Browser passed: friend profile, publications, safe links, private field exclusion, keyboard close, unavailable profile, retry, contact search and stale-response cleanup. Firestore simulated.');await browser.close();
+})().catch(error=>{console.error(error);process.exit(1);});

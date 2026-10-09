@@ -122,3 +122,11 @@ NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/profile-ui.browse
 ```
 
 Esses testes usam respostas controladas de PubMed e Firestore, sem alterar dados de produção. O teste da biblioteca cobre falhas sem dados fixos, recuperação de favoritos, busca remota, PMID, conteúdo escapado e XML inválido. O teste de perfil cobre estados de salvamento, falha, nova tentativa e restauração em outro contexto.
+
+### Visualizar perfis de amigos
+
+Em **Perfil → Rede acadêmica → Amigos**, use **Ver perfil** para abrir o perfil compartilhado do colega. A janela mostra bio, formação, instituição, cidade, ORCID, Lattes e artigos, com as publicações em destaque primeiro. Pode ser fechada pelo botão ou pela tecla Escape. Falhas de consulta oferecem nova tentativa; perfis retirados da rede aparecem como indisponíveis.
+
+Nos contatos pessoais, **Buscar perfil** consulta os perfis publicados pelo nome e permite escolher o colega correto; um contato por e-mail não é automaticamente vinculado a uma conta. É necessário entrar com Google e o colega precisa publicar seu perfil na rede. E-mail, contatos pessoais, favoritos e notas privados não são exibidos. As permissões existentes de `network_profiles` são mantidas.
+
+Validação de interface: `NODE_PATH=/workspace/.protocolum-tools/node_modules node tests/friends-network.browser.cjs` (Firestore simulado; não comprova acesso no Firebase de produção).
