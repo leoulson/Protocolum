@@ -184,3 +184,5 @@ As consultas usam o limite de 20, compatível com as regras existentes. Os teste
 ### Interface
 
 O visual editorial usa `redesign.css`, carregado após os estilos dos módulos. A paleta grafite e verde, a hierarquia de leitura e os estados de foco são compartilhados pela biblioteca, pelo perfil e pela comunidade. A fonte variável Manrope é servida localmente em `assets/fonts/`, com licença OFL incluída, e integra o cache offline. As regras duplicadas do antigo tema escuro foram removidas do shell; os módulos e a navegação permanecem em HTML, CSS e JavaScript.
+
+O acabamento atual segue o `soft-skill`: superfícies claras com bordas internas, navegação flutuante e transições com curva suave. O desfoque fica na navegação fixa e nos painéis sobrepostos; os cartões em rolagem usam transparência sem desfoque. `soft-motion.js` anima a apresentação uma vez com IntersectionObserver, respeitando a preferência por movimento reduzido. A preferência por transparência reduzida também possui tratamento próprio.
