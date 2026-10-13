@@ -180,3 +180,7 @@ A comunidade busca inicialmente os 20 posts mais recentes e oferece **Carregar m
 A primeira página continua recebendo atualizações em tempo real. Posts antigos já carregados também recebem alterações e exclusões, assim como suas respostas e votos. Os cursores do Firestore evitam repetir posts com a mesma data. Se uma página falhar, os posts e rascunhos de resposta permanecem na tela e o botão permite tentar novamente. Ao sair da conta, os dados e as assinaturas dessa sessão são limpos.
 
 As consultas usam o limite de 20, compatível com as regras existentes. Os testes automatizados de paginação e de interface usam Firestore simulado; a validação no projeto Firebase depende de um ambiente autenticado.
+
+### Interface
+
+O visual editorial usa `redesign.css`, carregado após os estilos dos módulos. A paleta grafite e verde, a hierarquia de leitura e os estados de foco são compartilhados pela biblioteca, pelo perfil e pela comunidade. A fonte variável Manrope é servida localmente em `assets/fonts/`, com licença OFL incluída, e integra o cache offline. As regras duplicadas do antigo tema escuro foram removidas do shell; os módulos e a navegação permanecem em HTML, CSS e JavaScript.
