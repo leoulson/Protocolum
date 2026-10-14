@@ -200,3 +200,9 @@ Com Google, a escolha é armazenada no campo privado `appearance` e recebida em 
 ### Carregamento sob demanda
 
 As ferramentas de perfil, comunidade, comparador, fluxogramas, laboratório PubMed e organização do leitor carregam na primeira utilização. A normalização dos dados acadêmicos foi separada da interface; a autenticação e a preferência de aparência continuam disponíveis na entrada. O cache offline mantém as ferramentas preparadas em segundo plano. A metodologia, a análise REA e a medição local estão em [docs/performance.md](docs/performance.md).
+
+### Vidro espacial e inclinação 3D
+
+`spatial-glass.css` aplica transparência, desfoque de 24 px com saturação de 150%, refração diagonal nas bordas e sombra difusa ao painel de apresentação, aos cartões introdutórios e aos destaques da biblioteca. Os textos mantêm as cores sólidas dos temas. Preferências por transparência reduzida e navegadores sem suporte ao filtro recebem superfícies sólidas.
+
+`spatial-glass.js` carrega na primeira interação com mouse de precisão. A rotação usa coordenadas locais, limita os ângulos e agrupa movimentos com requestAnimationFrame. Ao sair, o cartão volta ao repouso em 0,5 s; as indicações de aceleração são liberadas após o retorno. Foco em controles, telas touch e movimento reduzido suspendem a inclinação. As animações de entrada dos cartões usam opacidade para não disputar a transformação 3D. Os arquivos também entram no cache offline.

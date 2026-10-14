@@ -1,0 +1,17 @@
+/* Spatial glass is limited to the introduction and compact highlights. */
+:root{--spatial-tint:rgba(255,255,255,.10);--spatial-edge-start:rgba(255,255,255,.8);--spatial-edge-end:rgba(255,255,255,.14);--spatial-shadow:0 25px 50px -12px rgba(53,78,124,.18)}
+:root[data-theme=dark]{--spatial-tint:rgba(255,255,255,.05);--spatial-edge-start:rgba(255,255,255,.4);--spatial-edge-end:rgba(255,255,255,.05);--spatial-shadow:0 25px 50px -12px rgba(0,0,0,.5)}
+[data-spatial-glass],:root[data-theme=dark] [data-spatial-glass],#app [data-spatial-glass],:root[data-theme=dark] #app [data-spatial-glass]{position:relative;isolation:isolate;background:var(--spatial-tint);border:1px solid var(--spatial-edge-end);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2),var(--spatial-shadow);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);transform:perspective(1000px) rotateX(var(--glass-rotate-x,0deg)) rotateY(var(--glass-rotate-y,0deg));transform-origin:center;transition:transform .5s cubic-bezier(.25,.8,.25,1);color:var(--text)}
+[data-spatial-glass]::after{content:'';position:absolute;inset:-1px;pointer-events:none;border-radius:inherit;padding:1px;background:linear-gradient(135deg,var(--spatial-edge-start),var(--spatial-edge-end));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+[data-spatial-glass][data-spatial-phase=tracking],:root[data-theme=dark] [data-spatial-glass][data-spatial-phase=tracking],#app [data-spatial-glass][data-spatial-phase=tracking],:root[data-theme=dark] #app [data-spatial-glass][data-spatial-phase=tracking]{transition:none;will-change:transform,backdrop-filter}
+[data-spatial-glass][data-spatial-phase=restoring]{will-change:transform,backdrop-filter}
+[data-spatial-glass].soft-reveal{animation-name:spatial-reveal}
+@keyframes spatial-reveal{from{opacity:0}to{opacity:1}}
+/* Solid lettering remains independent of the transparent optical layer. */
+[data-spatial-glass] :is(h2,h3,b,strong){color:var(--text)}[data-spatial-glass] :is(p,small,footer){color:var(--muted)}
+@supports not ((backdrop-filter:blur(24px)) or (-webkit-backdrop-filter:blur(24px))){[data-spatial-glass],:root[data-theme=dark] [data-spatial-glass],#app [data-spatial-glass],:root[data-theme=dark] #app [data-spatial-glass]{background:var(--soft-solid)}}
+@media(hover:none),(pointer:coarse),(prefers-reduced-motion:reduce){[data-spatial-glass],:root[data-theme=dark] [data-spatial-glass],#app [data-spatial-glass],:root[data-theme=dark] #app [data-spatial-glass]{transform:none!important;will-change:auto!important;transition:none!important}}
+@media(prefers-reduced-transparency:reduce){[data-spatial-glass],:root[data-theme=dark] [data-spatial-glass],#app [data-spatial-glass],:root[data-theme=dark] #app [data-spatial-glass]{background:var(--soft-solid)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}}
+[data-spatial-glass]:hover,:root[data-theme=dark] [data-spatial-glass]:hover,#app [data-spatial-glass]:hover,:root[data-theme=dark] #app [data-spatial-glass]:hover{background:var(--spatial-tint);transform:perspective(1000px) rotateX(var(--glass-rotate-x,0deg)) rotateY(var(--glass-rotate-y,0deg))}
+
+#app [data-spatial-glass]::after{display:block}

@@ -6,3 +6,15 @@ if(!reduced.matches&&'IntersectionObserver' in window){
  },{threshold:.08});
  document.querySelectorAll('.landing-copy,.landing-visual,.landing-card').forEach(element=>observer.observe(element));
 }
+
+// Load the tilt engine on the first eligible interaction, preserving startup savings.
+const precise=matchMedia('(hover: hover) and (pointer: fine)');
+let opticalEngine,latestPoint;
+function activateGlass(event){
+ const element=event.target.closest('[data-spatial-glass]');if(!element||!precise.matches||reduced.matches)return;
+ latestPoint={element,x:event.clientX,y:event.clientY};
+ if(!opticalEngine){
+  opticalEngine=import('./spatial-glass.js').then(module=>{document.removeEventListener('mousemove',activateGlass);module.initializeSpatialGlass(latestPoint);}).catch(()=>{opticalEngine=null;});
+ }
+}
+document.addEventListener('mousemove',activateGlass,{passive:true});
