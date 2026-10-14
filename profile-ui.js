@@ -1,3 +1,4 @@
+import { mountAppearance } from './appearance-sync.js';
 import { normalizeProfile } from './profile-data.js';
 export { normalizeProfile } from './profile-data.js';
 import { loadProfile, saveProfile, saveProfileName, subscribeProfileUpdates, reconnectProfileUpdates } from './profile-store.js';
@@ -50,7 +51,7 @@ async function enhanceProfile(target) {
   sync.innerHTML=`<span id="profileSyncMessage"></span><button id="profileSyncRetry" class="btn" type="button" hidden>${text('Tentar novamente','Try again')}</button>`;
   section.querySelector('.profile-summary').after(sync);
   section.querySelector('#profileSyncRetry').onclick=()=>retryAction?.();
-  section.addEventListener('input',event=>{if(event.target.id!=='friendSearch'&&!event.target.closest('.network-panel')&&sync.dataset.state!=='saving'){retryAction=null;setSync('dirty');}});
+  section.addEventListener('input',event=>{if(event.target.id!=='friendSearch'&&!event.target.closest('.network-panel')&&!event.target.closest('.appearance-settings')&&sync.dataset.state!=='saving'){retryAction=null;setSync('dirty');}});
   setSync(user.authProvider==='google'?'saved':'local');
   const get = id => section.querySelector('#' + id);
   let editing = null;
@@ -104,6 +105,7 @@ async function enhanceProfile(target) {
       await attempt(async()=>{await saveProfileName(user,name);profile=await loadProfile(user);},()=>{section.dispatchEvent(new Event('profile-updated'));profileName=name;section.querySelector('.profile-summary h3').textContent=name;section.querySelector('.profile-monogram').textContent=name.slice(0,1).toUpperCase();},status);
     };
   }editAbout.append(professional);
+  mountAppearance(section);
   mountAcademic(section,user,()=>profile,async (next,status,afterSave)=>save(next,status,afterSave));
   section.querySelector('.profile-summary').after(sync);
   mountNetwork(section,user,()=>profile,next=>{profile=normalizeProfile(next);section.dispatchEvent(new Event('profile-updated'));});

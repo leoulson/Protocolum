@@ -105,3 +105,14 @@ test('profile listener reset and reconnect isolate old callbacks',async()=>{
 test('profile edits merge unchanged fields from a newer remote profile',async()=>{
  const s=await setup({remote:{name:'One',bio:'Old',city:'Old city',sharing:{published:false}}});const base=await s.api.loadProfile(s.user());s.push({name:'One',bio:'Old',city:'Remote city',sharing:{published:false}});await s.api.saveProfile(s.user(),{...base,bio:'My draft'},{base});assert.equal(s.documents.get('uid-one').city,'Remote city');assert.equal(s.documents.get('uid-one').bio,'My draft');
 });
+
+test('legacy profiles stay compatible and appearance only accepts supported preferences',async()=>{
+ const s=await setup({remote:{name:'One',appearance:'invalid'}});assert.equal((await s.api.loadProfile(s.user())).appearance,undefined);await assert.rejects(s.api.saveProfileAppearance(s.user(),'invalid'));
+});
+test('appearance transaction preserves concurrent fields and stays private',async()=>{
+ const s=await setup({remote:{name:'One',bio:'Old',appearance:'light'},publicProfile:{name:'One'}});await s.api.loadProfile(s.user());s.documents.set('uid-one',{...s.documents.get('uid-one'),bio:'Other device'});
+ const p=await s.api.saveProfileAppearance(s.user(),'dark');assert.equal(p.bio,'Other device');assert.equal(s.documents.get('uid-one').appearance,'dark');assert.equal(s.documents.get('uid-one').bio,'Other device');assert.equal(s.publicDocuments.get('uid-one').appearance,undefined);assert.deepEqual(Object.keys(s.writes.at(-1).data),['appearance']);
+});
+test('failed appearance save does not change profile cache and can be retried',async()=>{
+ const s=await setup({remote:{name:'One',appearance:'light'}});await s.api.loadProfile(s.user());s.setWriteError(true);await assert.rejects(s.api.saveProfileAppearance(s.user(),'dark'));assert.equal((await s.api.loadProfile(s.user())).appearance,'light');s.setWriteError(false);assert.equal((await s.api.saveProfileAppearance(s.user(),'dark')).appearance,'dark');
+});

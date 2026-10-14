@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#071a32">
+  <meta name="theme-color" content="#edf1f7"><script src="theme.js"></script>
   <title>Privacidade — Protocolum</title>
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-2R7HBVDNQ7"></script>
@@ -20,12 +20,13 @@
     a{color:var(--cyan)}header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:30px}header a{text-decoration:none}h1{font-size:clamp(30px,6vw,42px);line-height:1.1;letter-spacing:-1px;margin:0 0 8px}h2{font-size:19px;margin:30px 0 8px}p,li{color:var(--muted)}.updated{font-size:12px;color:#8eaac5}.back{border:1px solid var(--line);border-radius:12px;padding:9px 13px;background:#ffffff0a;white-space:nowrap}footer{border-top:1px solid var(--line);margin-top:36px;padding-top:18px;color:#8eaac5;font-size:12px}
     @media(max-width:520px){body{padding:10px}main{padding:20px 16px;border-radius:20px}header{align-items:flex-start;flex-direction:column;margin-bottom:22px}h2{font-size:17px;margin-top:24px}}
   </style>
+<link rel="stylesheet" href="redesign.css?v=4">
 </head>
-<body>
+<body class="privacy-page">
 <main>
-  <header><a href="index.html" class="back">← Voltar ao Protocolum</a><span>Protocolum · Privacidade</span></header>
+  <header><a href="index.html" class="back">← Voltar ao Protocolum</a><span>Protocolum · Privacidade</span><button class="btn theme-toggle" type="button" data-theme-toggle aria-label="Modo escuro" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z"/></svg><span data-theme-label>Modo escuro</span></button></header>
   <h1>Política de Privacidade</h1>
-  <p class="updated">Atualizada em 27 de setembro de 2026</p>
+  <p class="updated">Atualizada em 13 de outubro de 2026</p>
   <p>Esta política descreve como o Protocolum trata dados ao usar este site. O Protocolum apresenta materiais educacionais sobre diretrizes clínicas e não deve receber dados que identifiquem pacientes.</p>
 
   <h2>Dados da conta e autenticação</h2>
@@ -33,7 +34,7 @@
   <p>Se você entrar com Google, o Firebase Authentication processa os dados necessários à autenticação, como identificador da conta, nome, e-mail e foto de perfil, quando disponíveis. O Protocolum guarda no navegador os dados de perfil necessários para a sessão. Consulte também a <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Política de Privacidade do Google</a>.</p>
 
   <h2>Perfil privado na nuvem</h2>
-  <p>Com login Google, o nome de exibição, apresentação profissional, cidade, bio, links ORCID e Lattes, vitrine de artigos e contatos pessoais do perfil são guardados no Cloud Firestore, vinculados ao identificador da sua conta. Esses dados são carregados ao entrar em outro dispositivo. As regras de acesso permitem apenas ao titular ler e alterar esse perfil privado. Na primeira sincronização, o perfil deste navegador é transferido se ainda não existir uma versão na nuvem. Contas locais permanecem somente neste navegador.</p>
+  <p>Com login Google, o nome de exibição, apresentação profissional, cidade, bio, links ORCID e Lattes, vitrine de artigos, preferência de aparência e contatos pessoais do perfil são guardados no Cloud Firestore, vinculados ao identificador da sua conta. Esses dados são carregados ao entrar em outro dispositivo. As regras de acesso permitem apenas ao titular ler e alterar esse perfil privado. Na primeira sincronização, o perfil deste navegador é transferido se ainda não existir uma versão na nuvem. Contas locais permanecem somente neste navegador.</p>
   <p>O perfil privado não é publicado no diretório da rede acadêmica automaticamente: a publicação do perfil público continua dependendo de ação explícita. Evite incluir informações de pacientes. Limpar os dados do navegador ou sair da conta não apaga o perfil guardado na nuvem.</p>
 
   <h2>Favoritos e anotações de estudo</h2>

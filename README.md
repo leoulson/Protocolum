@@ -188,3 +188,11 @@ O visual editorial usa `redesign.css`, carregado após os estilos dos módulos. 
 O acabamento atual segue o `soft-skill`: superfícies claras com bordas internas, navegação flutuante e transições com curva suave. O desfoque fica na navegação fixa e nos painéis sobrepostos; os cartões em rolagem usam transparência sem desfoque. `soft-motion.js` anima a apresentação uma vez com IntersectionObserver, respeitando a preferência por movimento reduzido. A preferência por transparência reduzida também possui tratamento próprio.
 
 O botão de tema está na apresentação, na barra do aplicativo e no cabeçalho móvel da sessão clínica. `theme.js` restaura a escolha clara ou escura antes do carregamento dos estilos, atualiza as cores do navegador e sincroniza a preferência entre abas. A escolha fica em `protocolum.theme.v1` neste navegador; se o armazenamento estiver indisponível, a alternância continua funcionando durante a sessão. O tema claro é o padrão.
+
+### Aparência por perfil e preferência do sistema
+
+A opção **Acompanhar o sistema**, disponível no perfil junto de **Modo claro** e **Modo escuro**, reage às mudanças de aparência do aparelho enquanto o site está aberto. Na primeira visita, o padrão é acompanhar o sistema. Preferências antigas explícitas deste navegador continuam sendo restauradas antes dos estilos carregarem.
+
+Com Google, a escolha é armazenada no campo privado `appearance` e recebida em tempo real nos outros dispositivos. Uma transação altera apenas esse campo, preservando edições simultâneas do perfil; a escolha não entra no perfil público. Contas locais guardam a preferência no perfil deste navegador. Se a gravação falhar, o tema escolhido continua aplicado e o perfil oferece nova tentativa. Alterações rápidas são gravadas em ordem, mantendo a escolha mais recente.
+
+**Publicação necessária:** publique `firestore.rules` para permitir os valores `system`, `light` e `dark` no perfil privado. O campo é opcional para manter compatibilidade com documentos antigos. Os testes de sincronização usam Firestore simulado; não comprovam a publicação das regras nem a autorização no projeto real. As verificações de contraste cobrem as telas principais e o leitor em desktop e celular, usando composição de cores CSS; gradientes também exigem inspeção visual.

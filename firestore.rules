@@ -83,7 +83,7 @@ match /private_profiles/{uid} {
   function owner() { return request.auth != null && request.auth.uid == uid; }
   function validPrivateProfile() {
     let p = request.resource.data;
-    return p.keys().hasOnly(['name','role','specialty','institution','city','bio','orcid','lattes','articles','theme','friends','sharing'])
+    return p.keys().hasOnly(['name','role','specialty','institution','city','bio','orcid','lattes','articles','theme','friends','sharing','appearance'])
       && p.keys().hasAll(['name','role','specialty','institution','city','bio','orcid','lattes','articles','theme','friends'])
       && p.name is string && p.name.size() > 0 && p.name.size() <= 80
       && p.role is string && p.role.size() <= 80
@@ -95,6 +95,7 @@ match /private_profiles/{uid} {
       && p.lattes is string && p.lattes.size() <= 16
       && p.articles is list && p.articles.size() <= 100
       && p.friends is list && p.friends.size() <= 100
+      && (!('appearance' in p) || p.appearance in ['system','light','dark'])
       && p.theme in ['ocean','violet','emerald']
       && (!('sharing' in p) || (p.sharing is map
         && p.sharing.keys().hasOnly(['published','autoUpdate','visible'])

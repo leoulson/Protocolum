@@ -115,3 +115,20 @@ export function saveProfileName(user,name){
   name=name.trim();
   return enqueue(async()=>{current(user);if(user.authProvider==='google')await persist(user,null,name);rememberName(user,name);});
 }
+
+// Change only appearance in a transaction, preserving concurrent profile edits.
+export function saveProfileAppearance(user,appearance){
+  if(!['system','light','dark'].includes(appearance))return Promise.reject(new Error('Invalid appearance'));
+  return enqueue(async()=>{
+    current(user);const previous=await loadProfile(user);let profile;
+    if(user.authProvider==='google'){
+      const store=await cloud(user);
+      profile=await store.runTransaction(store.db,async transaction=>{
+        const snapshot=await transaction.get(store.ref);current(user);
+        const next=normalizeProfile(snapshot.data()||previous);next.appearance=appearance;
+        transaction.set(store.ref,{appearance},{merge:true});return next;
+      });
+    }else profile={...previous,appearance};
+    current(user);loads.set(identity(user),Promise.resolve(profile));localStorage.setItem(localKey(user),JSON.stringify(profile));return profile;
+  });
+}
