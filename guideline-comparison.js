@@ -196,5 +196,4 @@ new MutationObserver(() => {
   if (active()) renderGuidelineComparison();
 })
   .observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
-// Covers restoring the route before this deferred module has finished loading.
-if (active()) renderGuidelineComparison();
+// The feature loader renders the current route after the first import.

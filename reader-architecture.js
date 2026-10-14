@@ -183,6 +183,8 @@ const contentObserver = new MutationObserver(() => {
   }
 });
 if (body) contentObserver.observe(body, { childList: true });
+// The first import can finish after the reading panel is already populated.
+if (body?.querySelector('#readerSummary') && !body.querySelector('.reader-architecture')) buildReader();
 
 document.getElementById('appLanguage')?.addEventListener('click', () => {
   requestAnimationFrame(() => {

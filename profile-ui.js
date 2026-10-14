@@ -138,11 +138,11 @@ export function renderProfilePage() {
   window.renderProfileAccountBase?.(body);
   enhanceProfile(body);
 }
-export function injectProfile() {
+export function injectProfile({renderCurrent=true}={}) {
   window.renderProfilePage=renderProfilePage;
   const button=document.getElementById('accountBtn');
   if(button){button.dataset.protocolumProfile='ready';button.onclick=()=>document.querySelector('#nav [data-section="Perfil"]')?.click();}
-  if(document.querySelector('.nav-btn.active')?.dataset.section==='Perfil')renderProfilePage();
+  if(renderCurrent&&document.querySelector('.nav-btn.active')?.dataset.section==='Perfil')renderProfilePage();
   let lastLanguage=document.documentElement.lang;
   new MutationObserver(()=>{
     const next=document.documentElement.lang;

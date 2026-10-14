@@ -1,6 +1,6 @@
 import { saveProfileSharing } from './profile-store.js';
 import { SHARE_FIELDS, normalizeSharing } from './profile-sharing.js';
-import { normalizeAcademic } from './profile-academic.js';
+import { normalizeAcademic } from './profile-academic-data.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const t=(pt,en)=>document.documentElement.lang.startsWith('en')?en:pt;
 const normalized=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();

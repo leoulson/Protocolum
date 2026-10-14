@@ -1,5 +1,5 @@
 import { normalizeSharing } from './profile-sharing.js';
-import { normalizeAcademic } from './profile-academic.js';
+import { normalizeAcademic } from './profile-academic-data.js';
 const clean = (value, max = 160) => typeof value === 'string' ? value.trim().slice(0, max) : '';
 export function normalizeProfile(value = {}) {
   const p = value && typeof value === 'object' ? value : {};

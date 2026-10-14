@@ -196,3 +196,7 @@ A opção **Acompanhar o sistema**, disponível no perfil junto de **Modo claro*
 Com Google, a escolha é armazenada no campo privado `appearance` e recebida em tempo real nos outros dispositivos. Uma transação altera apenas esse campo, preservando edições simultâneas do perfil; a escolha não entra no perfil público. Contas locais guardam a preferência no perfil deste navegador. Se a gravação falhar, o tema escolhido continua aplicado e o perfil oferece nova tentativa. Alterações rápidas são gravadas em ordem, mantendo a escolha mais recente.
 
 **Publicação necessária:** publique `firestore.rules` para permitir os valores `system`, `light` e `dark` no perfil privado. O campo é opcional para manter compatibilidade com documentos antigos. Os testes de sincronização usam Firestore simulado; não comprovam a publicação das regras nem a autorização no projeto real. As verificações de contraste cobrem as telas principais e o leitor em desktop e celular, usando composição de cores CSS; gradientes também exigem inspeção visual.
+
+### Carregamento sob demanda
+
+As ferramentas de perfil, comunidade, comparador, fluxogramas, laboratório PubMed e organização do leitor carregam na primeira utilização. A normalização dos dados acadêmicos foi separada da interface; a autenticação e a preferência de aparência continuam disponíveis na entrada. O cache offline mantém as ferramentas preparadas em segundo plano. A metodologia, a análise REA e a medição local estão em [docs/performance.md](docs/performance.md).
