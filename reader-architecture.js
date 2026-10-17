@@ -71,7 +71,7 @@ function buildReader() {
 
   const chrome = document.createElement('header');
   chrome.className = 'reader-architecture-head';
-  chrome.innerHTML = `<div><p>${html(text('Leitura estruturada', 'Structured reading'))}</p><button class="btn reader-compare-toggle" type="button" aria-pressed="false">${html(text('Modo Comparação (Split-Screen)', 'Comparison mode (split screen)'))}</button></div>`;
+  chrome.innerHTML = `<div><p>${html(text('Leitura estruturada', 'Structured reading'))}</p><button class="btn reader-compare-toggle" type="button" aria-pressed="false">${html(text('Comparar diretrizes', 'Compare guidelines'))}</button></div>`;
 
   const layout = document.createElement('div');
   layout.className = 'reader-layout';
@@ -109,7 +109,7 @@ function buildReader() {
   toc.querySelectorAll('[data-toc]').forEach(link => link.addEventListener('click', event => {
     event.preventDefault();
     body.querySelector(`#${CSS.escape(link.dataset.toc)}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    if (matchMedia('(max-width: 760px)').matches) toc.querySelector('details').open = false;
+    if (matchMedia('(max-width: 1023px)').matches) toc.querySelector('details').open = false;
   }));
 
   chrome.querySelector('.reader-compare-toggle').addEventListener('click', event => {
@@ -119,7 +119,7 @@ function buildReader() {
     event.currentTarget.setAttribute('aria-pressed', String(enabled));
     event.currentTarget.textContent = enabled
       ? text('Fechar comparação', 'Close comparison')
-      : text('Modo Comparação (Split-Screen)', 'Comparison mode (split screen)');
+      : text('Comparar diretrizes', 'Compare guidelines');
     if (enabled) {
       if (selectedCompareFor !== current?.id) {
         selectedCompareId = relatedDefault(current);
@@ -132,11 +132,11 @@ function buildReader() {
 
   installObserver(sections, toc);
   const details = toc.querySelector('details');
-  if (matchMedia('(max-width: 760px)').matches) details.open = false;
+  if (matchMedia('(max-width: 1023px)').matches) details.open = false;
   if (responsiveHandler) window.removeEventListener('resize', responsiveHandler);
   responsiveHandler = () => {
     if (!document.querySelector('.reader-architecture')) return;
-    if (matchMedia('(max-width: 760px)').matches) details.open = false;
+    if (matchMedia('(max-width: 1023px)').matches) details.open = false;
     else details.open = true;
   };
   window.addEventListener('resize', responsiveHandler, { passive: true });
@@ -193,7 +193,7 @@ document.getElementById('appLanguage')?.addEventListener('click', () => {
     const button = body.querySelector('.reader-compare-toggle');
     button.textContent = layout.classList.contains('is-comparing')
       ? text('Fechar comparação', 'Close comparison')
-      : text('Modo Comparação (Split-Screen)', 'Comparison mode (split screen)');
+      : text('Comparar diretrizes', 'Compare guidelines');
     const toc = body.querySelector('.reader-toc');
     toc.querySelector('summary').textContent = text('Índice desta diretriz', 'Guideline contents');
     toc.querySelector('nav').setAttribute('aria-label', text('Tópicos da diretriz', 'Guideline topics'));

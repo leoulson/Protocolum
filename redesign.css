@@ -113,3 +113,23 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background-im
 .privacy-page{padding:24px}.privacy-page main{background:var(--soft-surface);border-color:var(--soft-edge);box-shadow:var(--soft-bezel),var(--soft-depth);backdrop-filter:none}.privacy-page :is(.updated,footer){color:var(--muted)}.privacy-page footer{border-color:var(--line)}.privacy-page .back{background:var(--soft-inset);border-color:var(--soft-field-line);border-radius:24px}@media(max-width:520px){.privacy-page{padding:12px}}
 #detailOverlay :is(.reader-tools,.reading-actions) button{background:var(--soft-solid);color:var(--cyan);border-color:var(--soft-field-line)}
 input::placeholder,textarea::placeholder{color:var(--muted)!important;opacity:1}
+/* Shared surfaces apply inside dialogs as well as the main application. */
+:root{--overlay-surface:#51638240}:root[data-theme=dark]{--overlay-surface:#07121f99}
+.overlay,.drawer-backdrop,.friend-profile-dialog::backdrop{background:var(--overlay-surface)}
+#detailOverlay .reading-actions{background:var(--soft-solid);color:var(--text);border-color:var(--soft-field-line)}
+#detailOverlay :is(.reader-notes,.reader-search,.reader-compare-select){background:var(--soft-solid);color:var(--text);border-color:var(--soft-field-line)}
+#detailOverlay :is(.reader-note-status,.reader-search-result,.reader-compare-meta){color:var(--muted)}
+#detailOverlay .reader-tools button[aria-pressed=true],#detailOverlay .reader-toc a.active{background:var(--soft-inset);color:var(--cyan);border-color:var(--soft-field-line)}
+.friend-profile-dialog :is(.academic-cover,.academic-paper,.academic-stats>div,.academic-links a,.network-public-view){background:var(--soft-surface);border-color:var(--soft-field-line);color:var(--text)}
+.friend-profile-dialog :is(h2,h3,h4,strong,.academic-paper h4 a){color:var(--text)}.friend-profile-dialog :is(p,small,.academic-identity,.academic-stats span){color:var(--muted)}
+.profile-live-notice{background:var(--soft-inset);border-color:var(--soft-field-line);color:var(--feedback-saving)}
+/* Skip links stay off screen until keyboard focus, including when the page is scrolled. */
+.skip-link{top:12px;left:12px;transform:none;clip-path:inset(50%);width:1px;height:1px;overflow:hidden;padding:0}.skip-link:focus{clip-path:none;width:auto;height:auto;overflow:visible;padding:12px 20px;transform:none}
+#detailOverlay .reading-section-label{color:var(--cyan)}#detailOverlay .reader-note-status{color:var(--muted)}
+#app .hero .linkbtn{color:var(--cyan);background:var(--soft-inset);border-color:var(--soft-field-line)}
+#app .pml-status{color:var(--cyan)}#app :is(#caseStatus,#generalPostStatus){color:var(--muted)}
+/* Dialogs stay above floating navigation at every breakpoint. */
+.overlay{z-index:80!important}.toast{z-index:85!important}
+#app .pml-card a{color:var(--cyan)}#app .pml-analysis h4{color:var(--text)}#app .pml-notice{color:var(--muted);background:var(--soft-inset);border-color:var(--soft-field-line)}#app .pml-card[aria-pressed=true]{border-color:var(--cyan)}
+/* Apply theme colors atomically; keep transform/opacity interactions independent. */
+.theme-switching *,.theme-switching *::before,.theme-switching *::after{transition-property:transform,opacity!important;transition-delay:0s!important}

@@ -169,12 +169,12 @@ function renderAnalysis() {
 
     if (!window.clinicalMindUser) {
       statusEl.textContent = lang() === 'en' ? 'Please log in with Google to save your appraisal.' : 'Por favor, faa login com o Google para salvar.';
-      statusEl.style.color = '#ff8d9e';
+      statusEl.style.color = 'var(--feedback-error)';
       return;
     }
     
     statusEl.textContent = lang() === 'en' ? 'Saving to cloud...' : 'Salvando na nuvem...';
-    statusEl.style.color = '#8fcfff';
+    statusEl.style.color = 'var(--cyan)';
     
     const data = Object.fromEntries(new FormData(form).entries());
     form.querySelectorAll('input[type="checkbox"]').forEach(input => { data[input.name] = input.checked; });
@@ -186,10 +186,10 @@ function renderAnalysis() {
          await window.savePubMedToCloud(article.pmid, review);
       }
       statusEl.textContent = t('saved') + ' (Cloud)';
-      statusEl.style.color = '#39d9a0';
+      statusEl.style.color = 'var(--feedback-saved)';
     } catch (e) {
       statusEl.textContent = lang() === 'en' ? 'Could not save to cloud.' : 'Erro ao salvar na nuvem: ' + e.message;
-      statusEl.style.color = '#ff8d9e';
+      statusEl.style.color = 'var(--feedback-error)';
     }
   });
 }

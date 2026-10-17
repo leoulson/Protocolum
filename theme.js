@@ -2,6 +2,7 @@
 (()=>{
  const key='protocolum.theme.v1',root=document.documentElement,system=matchMedia('(prefers-color-scheme: dark)');
  const valid=value=>['system','light','dark'].includes(value);
+ let paintVersion=0;
  let mode='system';try{const saved=localStorage.getItem(key);if(valid(saved))mode=saved;}catch{}
  function labels(){
   const english=root.lang.startsWith('en'),dark=root.dataset.theme==='dark';
@@ -13,6 +14,10 @@
  }
  function apply(value,{source='device',remember=true}={}){
   mode=valid(value)?value:'system';const theme=mode==='system'?(system.matches?'dark':'light'):mode;
+  if(root.dataset.theme&&root.dataset.theme!==theme){
+   const version=++paintVersion;root.classList.add('theme-switching');
+   requestAnimationFrame(()=>requestAnimationFrame(()=>{if(version===paintVersion)root.classList.remove('theme-switching');}));
+  }
   root.dataset.appearance=mode;root.dataset.theme=theme;
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='dark'?'#101927':'#edf1f7');
   document.querySelector('meta[name="color-scheme"]')?.setAttribute('content',theme);

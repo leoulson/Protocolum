@@ -206,3 +206,9 @@ As ferramentas de perfil, comunidade, comparador, fluxogramas, laboratório PubM
 `spatial-glass.css` aplica transparência, desfoque de 24 px com saturação de 150%, refração diagonal nas bordas e sombra difusa ao painel de apresentação, aos cartões introdutórios e aos destaques da biblioteca. Os textos mantêm as cores sólidas dos temas. Preferências por transparência reduzida e navegadores sem suporte ao filtro recebem superfícies sólidas.
 
 `spatial-glass.js` carrega na primeira interação com mouse de precisão. A rotação usa coordenadas locais, limita os ângulos e agrupa movimentos com requestAnimationFrame. Ao sair, o cartão volta ao repouso em 0,5 s; as indicações de aceleração são liberadas após o retorno. Foco em controles, telas touch e movimento reduzido suspendem a inclinação. As animações de entrada dos cartões usam opacidade para não disputar a transformação 3D. Os arquivos também entram no cache offline.
+
+### Interface móvel e cores dos temas
+
+A navegação móvel usa uma coluna no menu e controles de toque com pelo menos 44 px nos cabeçalhos. O leitor mantém o cabeçalho compacto, o caminho de navegação em uma linha e o conteúdo em uma área rolável; comparações ficam empilhadas até 1023 px. Os diálogos acompanham a área visível informada por VisualViewport, inclusive durante redimensionamentos, e ficam acima da navegação flutuante.
+
+Campos, avisos, publicações e perfis de amigos usam as variáveis do tema em vez de cores fixas do antigo modo escuro. Mensagens de erro e sucesso do laboratório PubMed também acompanham a aparência atual. Na troca de tema, texto e superfície mudam juntos, preservando as transições de movimento e opacidade. Os testes em Chromium verificam larguras de 320 a 844 px, orientação horizontal, redimensionamento, rascunhos e os dois temas; serviços externos são simulados.

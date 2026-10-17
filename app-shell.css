@@ -134,7 +134,7 @@ body{background:radial-gradient(ellipse at 58% -12%,rgba(104,198,255,.33),transp
   .sidebar{order:0;max-height:540px;overflow:hidden;margin:0;padding:10px;border-radius:17px;transition:max-height .42s cubic-bezier(.2,.8,.2,1),opacity .28s ease,transform .42s ease,padding .3s ease,margin .3s ease}
   .shell.sidebar-collapsed .sidebar{max-height:0;margin:0;padding:0;border-width:0;opacity:0;transform:translateY(-8px);pointer-events:none}
   .brand{padding:2px 7px 9px;gap:9px}.brandmark{font-size:25px}.brand strong{font-size:18px}
-  nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;overflow:visible}
+  #nav{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;overflow:visible}
   .nav-btn{min-width:0;justify-content:flex-start;gap:6px;padding:8px 7px;font-size:11px;line-height:1.2;border-radius:10px}
   .nav-btn .icon{width:19px;flex:0 0 19px;font-size:16px}
   .sources{display:flex;flex-wrap:wrap;gap:5px 12px;max-height:74px;overflow:auto;margin-top:8px;padding:8px 4px 2px;font-size:10px}
